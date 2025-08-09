@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zyada – Bilingual Mobile Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Tajawal:wght@400;700;800&display=swap" rel="stylesheet">
+<meta name="description" content="Zyada (زيادة) bilingual preview with language toggle (EN/AR), mobile polish, and impact messaging.">
+<style>
+  :root{
+    --emerald:#22c55e; --emerald-600:#16a34a; --coral:#f97316; --amber:#f59e0b;
+    --bg1:#ecfdf5; --bg2:#fff; --bg3:#fffbeb; --text:#0f172a; --muted:#64748b;
+    --ring: 0 0 0 3px rgba(34,197,94,.25); --card:#ffffffcc; --border:#e2e8f0;
+  }
+  *{box-sizing:border-box} img{max-width:100%;height:auto;display:block}
+  body{margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,'Tajawal';line-height:1.5;color:var(--text);
+       background: radial-gradient(1200px 800px at 10% -10%, var(--bg1), transparent),
+                   radial-gradient(1000px 800px at 110% -10%, var(--bg3), transparent), var(--bg2);}
+  .wrap{max-width:1100px;margin:0 auto;padding:16px}
+  .header{position:sticky;top:0;z-index:30;backdrop-filter:saturate(140%) blur(8px);background:#ffffffb3;border-bottom:1px solid var(--border)}
+  .header .row{display:flex;justify-content:space-between;align-items:center;padding:10px 16px}
+  .logo{display:flex;align-items:center;gap:10px;font-weight:900;font-size:20px}
+  .badge{background:#dcfce7;color:#065f46;border:1px solid #bbf7d0;padding:4px 8px;border-radius:999px;font-size:12px}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:12px 16px;border-radius:14px;border:1px solid var(--border);
+       background:white;cursor:pointer;font-weight:800}
+  .btn.primary{background:var(--emerald);border-color:var(--emerald);color:white;box-shadow:0 10px 24px rgba(34,197,94,.25)}
+  .btn.primary:hover{background:var(--emerald-600)}
+  .btn:focus{outline:none;box-shadow:var(--ring)}
+  .btn.lg{padding:14px 18px;border-radius:16px}
+  .tabs{display:flex;gap:8px;margin:16px 0;overflow:auto}
+  .tab{padding:10px 14px;border-radius:12px;border:1px solid var(--border);background:white;font-weight:800;cursor:pointer;flex:0 0 auto}
+  .tab.active{background:var(--emerald);border-color:var(--emerald);color:#fff}
+  .grid{display:grid;gap:16px}
+  @media(min-width:960px){.grid.two{grid-template-columns:1.2fr .8fr}}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.04)}
+  .p-16{padding:16px}.p-20{padding:20px}.p-24{padding:24px}
+  h1{font-size:40px;line-height:1.2;margin:0 0 8px} @media(max-width:600px){ h1{font-size:30px} }
+  .lead{color:var(--muted);font-size:18px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}.chip{background:#f1f5f9;border:1px solid var(--border);padding:8px 12px;border-radius:999px;font-size:13px;font-weight:700}
+  .chip.on{background:#dcfce7;border-color:#bbf7d0;color:#065f46}
+  .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
+  .kpi{background:white;border:1px solid var(--border);border-radius:14px;padding:14px;text-align:center}
+  .kpi .n{font-size:22px;font-weight:900}
+  .mock{position:relative;min-height:320px;background:linear-gradient(45deg,#f0fdf4,white);border-radius:16px;overflow:hidden;border:1px solid var(--border)}
+  .offers{display:grid;gap:10px;max-height:420px;overflow:auto}
+  .offer{display:grid;grid-template-columns:92px 1fr auto;gap:12px;background:white;border:1px solid var(--border);border-radius:14px;padding:10px}
+  @media(max-width:520px){ .offer{grid-template-columns:80px 1fr; } .offer .reserve{grid-column:1/-1} }
+  .offer .thumb{width:92px;height:92px;border-radius:12px;background-size:cover;background-position:center;border:1px solid var(--border)}
+  .offer .name{font-weight:900}.offer .meta{font-size:12px;color:#64748b}
+  .price{display:flex;align-items:center;gap:8px;margin-top:4px}
+  .now{color:#047857;font-weight:900}.was{text-decoration:line-through;color:#9ca3af;font-size:12px}
+  .filters{display:flex;flex-wrap:wrap;gap:10px}
+  .input,.select{padding:12px;border-radius:14px;border:1px solid var(--border);background:white;font-size:16px}
+  .range{accent-color:var(--emerald)}
+  .map{height:420px;border:1px solid var(--border);border-radius:16px;display:grid;place-items:center;color:#94a3b8}
+  .steps{display:grid;gap:10px}
+  .step{display:flex;gap:10px;align-items:flex-start;background:white;border:1px solid var(--border);border-radius:14px;padding:12px}
+  .bullet{width:28px;height:28px;border-radius:50%;background:var(--emerald);color:white;display:grid;place-items:center;font-weight:900}
+  .footer{color:#64748b;padding:72px 16px 24px}
+  .logo-mark{width:32px;height:32px}
+  .row-gap{display:flex;gap:12px;flex-wrap:wrap}
+  .pill{display:inline-flex;align-items:center;gap:6px;background:#fff7ed;border:1px solid #fde68a;color:#92400e;padding:8px 12px;border-radius:999px;font-size:12px;font-weight:800}
+  .impact{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:12px}
+  .impact .stat{background:linear-gradient(135deg,#ffffff,#f8fafc);border:1px solid var(--border);border-radius:14px;padding:14px}
+  .impact .big{font-size:26px;font-weight:900;color:#065f46}
+  .impact .small{font-size:12px;color:#64748b}
+  .trust{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  @media(max-width:920px){.impact,.trust{grid-template-columns:1fr}}
+  .trust .tcard{background:white;border:1px solid var(--border);border-radius:14px;padding:14px}
+  .tcard h3{margin:0 0 6px;font-size:18px}
+  .tick{color:#16a34a;font-weight:900}
+  .note{font-size:12px;color:#64748b}
+  .bbar{position:fixed;bottom:0;left:0;right:0;z-index:40;background:#ffffffee;border-top:1px solid var(--border);backdrop-filter:blur(6px);display:none}
+  .bbar .row{max-width:1100px;margin:0 auto;padding:10px 16px;display:flex;gap:10px}
+  .bbar .btn{flex:1}
+  @media(max-width:860px){ .bbar{display:block} }
+  .drawer{position:fixed;inset:0;z-index:50;display:none}
+  .drawer.open{display:block}
+  .drawer .backdrop{position:absolute;inset:0;background:rgba(0,0,0,.35)}
+  .drawer .panel{position:absolute;left:0;right:0;bottom:0;background:white;border-top-left-radius:20px;border-top-right-radius:20px;max-height:80vh;overflow:auto;border-top:1px solid var(--border);padding:16px}
+  .drawer h3{margin:0 0 8px}
+  .drawer .row-gap{margin-top:6px}
+  /* RTL helpers */
+  [dir="rtl"] .row{flex-direction:row-reverse}
+  [dir="rtl"] .logo{flex-direction:row-reverse}
+  [dir="rtl"] .tabs{direction:rtl}
+  [dir="rtl"] .offer{direction:rtl}
+  [dir="rtl"] .kpis, [dir="rtl"] .impact, [dir="rtl"] .trust {direction:rtl}
+</style>
+</head>
+<body>
+  <header class="header">
+    <div class="row wrap">
+      <div class="logo">
+        <svg class="logo-mark" viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#22c55e"/><stop offset="1" stop-color="#16a34a"/></linearGradient></defs><circle cx="36" cy="36" r="30" fill="url(#g)"/><path d="M48 26 a8 8 0 1 1 -2 2" fill="#fff7ed"/><path d="M24 44 C 32 54, 44 54, 52 44" fill="none" stroke="#f97316" stroke-width="6" stroke-linecap="round"/></svg>
+        <div><span id="brand">Zyada</span> <span style="color:#f59e0b">زيادة</span></div>
+        <span class="badge" id="betaLabel">UAE • Beta</span>
+      </div>
+      <div class="row-gap">
+        <button class="btn" data-tabto="customers" id="ctaFind">Find deals</button>
+        <button class="btn primary" data-tabto="partners" id="ctaPartner">For restaurants</button>
+        <button class="btn" id="langToggle" aria-label="Toggle language">العربية</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="tabs">
+      <button class="tab active" data-tab="home" id="tabHome">Home</button>
+      <button class="tab" data-tab="customers" id="tabCustomers">Customers</button>
+      <button class="tab" data-tab="partners" id="tabPartners">Restaurants</button>
+    </div>
+
+    <!-- HOME -->
+    <section id="home" class="grid two">
+      <div class="card p-20">
+        <div class="pill" id="pillFresh">Fresh food, extra savings</div>
+        <h1 id="homeHeadline">Rescue tasty <span class="chip on">surplus</span> food near you</h1>
+        <p class="lead" id="homeLead">Zyada (زيادة) connects you to end‑of‑day <b>fresh surplus</b> made the same day — safely packed and discounted. Save money, reduce waste, feel good.</p>
+        <div class="row-gap" style="margin-top:8px">
+          <button class="btn primary lg" data-tabto="customers" id="btnSeeDeals">See nearby deals</button>
+          <button class="btn lg" data-tabto="partners" id="btnListSurplus">List your surplus</button>
+        </div>
+        <div class="kpis">
+          <div class="kpi"><div class="n" id="kpiBag">AED 15–25</div><div class="l" id="kpiBagLbl">Typical bag</div></div>
+          <div class="kpi"><div class="n" id="kpiDisc">30–70%</div><div class="l" id="kpiDiscLbl">Discounts</div></div>
+          <div class="kpi"><div class="n" id="kpiCity">Dubai</div><div class="l" id="kpiCityLbl">Launch city</div></div>
+        </div>
+        <div class="impact">
+          <div class="stat"><div class="big" id="mealsSaved">0 meals</div><div class="small" id="mealsLbl">rescued from the bin</div></div>
+          <div class="stat"><div class="big" id="co2Saved">0 kg CO₂e</div><div class="small" id="co2Lbl">emissions avoided</div></div>
+          <div class="stat"><div class="big" id="waterSaved">0 L water</div><div class="small" id="waterLbl">conserved along the chain</div></div>
+        </div>
+        <div class="trust" style="margin-top:14px">
+          <div class="tcard">
+            <h3 id="trust1Title">Always fresh, same‑day</h3>
+            <p class="note" id="trust1Text"><span class="tick">✓</span> Made the same day • <span class="tick">✓</span> Timed pickup windows • <span class="tick">✓</span> Partners choose what’s at its best.</p>
+          </div>
+          <div class="tcard">
+            <h3 id="trust2Title">Quality you can see</h3>
+            <p class="note" id="trust2Text"><span class="tick">✓</span> Photo & details shown • <span class="tick">✓</span> Halal/veg filters • <span class="tick">✓</span> Limited quantities.</p>
+          </div>
+          <div class="tcard">
+            <h3 id="trust3Title">Safe & simple</h3>
+            <p class="note" id="trust3Text"><span class="tick">✓</span> Partner‑verified outlets • <span class="tick">✓</span> Sealed Surprise Bags • <span class="tick">✓</span> Pay on pickup (beta).</p>
+          </div>
+        </div>
+        <div class="chips" style="margin-top:10px">
+          <span class="chip on" id="tagHalal">Halal</span><span class="chip on" id="tagVeg">Vegetarian</span><span class="chip" id="tag1">Biryani</span><span class="chip" id="tag2">Pastries</span><span class="chip" id="tag3">Hypermarket</span>
+        </div>
+      </div>
+
+      <div class="card p-0">
+        <div class="mock">
+          <div style="position:absolute;inset:0;padding:16px">
+            <div class="offers" style="grid-template-columns:repeat(2,1fr)">
+              <div class="offer"><div class="thumb" loading="lazy" style="background-image:url('https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?q=80&w=600&auto=format&fit=crop')"></div><div><div class="name">Pastry Box</div><div class="meta">Local Café • Bakery</div><div class="price"><span class="now">AED 12</span><span class="was">AED 30</span><span class="chip on">60% off</span></div></div><button class="btn primary reserve" id="reserve1">Reserve</button></div>
+              <div class="offer"><div class="thumb" loading="lazy" style="background-image:url('https://images.unsplash.com/photo-1604908553613-69474a4db1df?q=80&w=600&auto=format&fit=crop')"></div><div><div class="name">Chicken Biryani</div><div class="meta">Karachi Kitchen • Pakistani</div><div class="price"><span class="now">AED 15</span><span class="was">AED 28</span><span class="chip on">46% off</span></div></div><button class="btn primary reserve" id="reserve2">Reserve</button></div>
+              <div class="offer"><div class="thumb" loading="lazy" style="background-image:url('https://images.unsplash.com/photo-1544025162-d76694265947?q=80&w=600&auto=format&fit=crop')"></div><div><div class="name">Sushi Surprise (6pc)</div><div class="meta">Umi Sushi • Japanese</div><div class="price"><span class="now">AED 24</span><span class="was">AED 48</span><span class="chip on">50% off</span></div></div><button class="btn primary reserve" id="reserve3">Reserve</button></div>
+              <div class="offer"><div class="thumb" loading="lazy" style="background-image:url('https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=600&auto=format&fit=crop')"></div><div><div class="name">Grill Box</div><div class="meta">Kebabish • Middle Eastern</div><div class="price"><span class="now">AED 25</span><span class="was">AED 45</span><span class="chip on">44% off</span></div></div><button class="btn primary reserve" id="reserve4">Reserve</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CUSTOMERS -->
+    <section id="customers" class="grid two" style="display:none">
+      <div class="card p-16">
+        <div class="filters">
+          <input class="input" placeholder="Search item or restaurant…" id="searchPlaceholder">
+          <button class="btn lg" id="openFilters">Filters</button>
+          <button class="btn lg" id="useLocation">Use my location</button>
+        </div>
+        <div class="map" style="margin-top:10px">
+          <div style="text-align:center">
+            <div style="font-size:48px">🗺️</div>
+            <div class="name" style="font-weight:900" id="mapHeadline">Map (Leaflet) here</div>
+            <div class="meta" id="mapSub">Pins show surplus bags near you</div>
+          </div>
+        </div>
+      </div>
+      <div class="offers" id="offerListLabel">
+        <!-- Offer cards above are enough for the preview -->
+      </div>
+    </section>
+
+    <!-- PARTNERS -->
+    <section id="partners" style="display:none" class="grid two">
+      <div class="card p-24">
+        <h2 style="margin:0 0 8px;font-size:30px" id="partnerHeadline">List your daily surplus in minutes</h2>
+        <p class="lead" id="partnerLead">Turn end‑of‑day surplus into new customers and extra revenue. No monthly fees during beta. Post items, set pickup window & discount, go live.</p>
+        <div class="row-gap" style="margin-top:10px">
+          <button class="btn primary lg" id="loginGoogle">Login with Google</button>
+          <button class="btn lg" id="contactUs">Contact us</button>
+        </div>
+        <div class="steps" style="margin-top:14px">
+          <div class="step"><div class="bullet">1</div><div><div class="name" style="font-weight:900" id="s1Title">Submit outlet details</div><div class="meta" id="s1Text">We add you to the map with your logo & address</div></div></div>
+          <div class="step"><div class="bullet">2</div><div><div class="name" style="font-weight:900" id="s2Title">Post today’s surplus</div><div class="meta" id="s2Text">Name, price before/after, halal/veg, quantity, pickup times</div></div></div>
+          <div class="step"><div class="bullet">3</div><div><div class="name" style="font-weight:900" id="s3Title">Customers reserve & pick up</div><div class="meta" id="s3Text">Show code at pickup and pay on site (beta)</div></div></div>
+        </div>
+      </div>
+      <div class="card p-20">
+        <h3 style="margin:0 0 8px;font-size:20px" id="addOffer">Add offer (preview)</h3>
+        <div class="grid" style="grid-template-columns:repeat(2,1fr)">
+          <label class="grid"><span class="meta" id="fItem">Item name</span><input class="input" placeholder="Happy Bag"></label>
+          <label class="grid"><span class="meta" id="fCuisine">Cuisine</span><input class="input" placeholder="Bakery"></label>
+          <label class="grid"><span class="meta" id="fOrig">Original price (AED)</span><input type="number" class="input" placeholder="30"></label>
+          <label class="grid"><span class="meta" id="fSale">Sale price (AED)</span><input type="number" class="input" placeholder="12"></label>
+          <label class="grid"><span class="meta" id="fStart">Pickup start</span><input type="time" class="input"></label>
+          <label class="grid"><span class="meta" id="fEnd">Pickup end</span><input type="time" class="input"></label>
+          <label class="grid"><span class="meta" id="fHalal">Halal</span><select class="select"><option>Yes</option><option>No</option></select></label>
+          <label class="grid"><span class="meta" id="fVeg">Vegetarian</span><select class="select"><option>Yes</option><option>No</option></select></label>
+          <label class="grid" style="grid-column:1/3"><span class="meta" id="fImg">Image URL</span><input class="input" placeholder="https://…"></label>
+        </div>
+        <div class="row-gap" style="margin-top:10px">
+          <button class="btn primary lg" id="saveOffer">Save offer</button>
+          <button class="btn lg" id="cancelOffer">Cancel</button>
+        </div>
+        <p class="meta" style="margin-top:8px" id="mvpNote">In MVP, this form writes to your Google Sheet via Apps Script after Google login.</p>
+      </div>
+    </section>
+  </main>
+
+  <div class="bbar">
+    <div class="row">
+      <button class="btn" data-tabto="customers" id="bbarFind">Find deals</button>
+      <button class="btn primary" data-tabto="partners" id="bbarPartner">For restaurants</button>
+    </div>
+  </div>
+
+  <div class="drawer" id="filterDrawer" aria-hidden="true">
+    <div class="backdrop" id="closeDrawer"></div>
+    <div class="panel">
+      <h3 id="drawerTitle">Filters</h3>
+      <div class="row-gap">
+        <label><span id="drawerSearchLbl">Search</span><br><input class="input" placeholder="Item or restaurant…"></label>
+        <label><span id="drawerPriceLbl">Max price (AED)</span><br><input type="range" class="range" min="5" max="100" value="50"></label>
+        <div class="chips"><button class="chip" id="drawerHalal">Halal</button><button class="chip" id="drawerVeg">Veg</button></div>
+        <div class="row-gap"><button class="btn primary lg" id="applyFilters">Apply</button><button class="btn lg" id="closeDrawer2">Close</button></div>
+      </div>
+    </div>
+  </div>
+
+  <footer class="wrap footer">© <span id="yr"></span> Zyada • Bilingual Mobile Preview</footer>
+
+<script>
+  document.getElementById('yr').textContent = new Date().getFullYear();
+
+  // Demo impact counters
+  const bags = 4321, meals = bags, co2 = Math.round(bags*2.5), water = Math.round(bags*1000);
+  const ease = (t)=>t<.5?2*t*t:-1+(4-2*t)*t;
+  function animate(el, target, label){
+    const start = performance.now(), dur = 1000;
+    function step(now){ const p=Math.min(1,(now-start)/dur); const v=Math.floor(target*ease(p)); el.textContent=v.toLocaleString()+' '+label; if(p<1) requestAnimationFrame(step); else el.textContent=target.toLocaleString()+' '+label; }
+    requestAnimationFrame(step);
+  }
+  animate(document.getElementById('mealsSaved'), meals, 'meals');
+  animate(document.getElementById('co2Saved'), co2, 'kg CO₂e');
+  animate(document.getElementById('waterSaved'), water, 'L water');
+
+  // Tabs
+  const tabs = document.querySelectorAll('.tab');
+  const sections = ['home','customers','partners'].map(id => document.getElementById(id));
+  tabs.forEach(btn => btn.addEventListener('click', () => {
+    tabs.forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const id = btn.dataset.tab;
+    sections.forEach(s => s.style.display = (s.id===id ? '' : 'none'));
+    window.scrollTo({top:0,behavior:'smooth'});
+  }));
+  document.querySelectorAll('[data-tabto]').forEach(el => el.addEventListener('click', () => {
+    const id = el.getAttribute('data-tabto');
+    document.querySelector(`.tab[data-tab="${id}"]`).click();
+  }));
+
+  // Drawer
+  const drawer = document.getElementById('filterDrawer');
+  document.getElementById('openFilters').addEventListener('click', ()=>{ drawer.classList.add('open'); drawer.setAttribute('aria-hidden','false'); });
+  document.getElementById('closeDrawer').addEventListener('click', closeDrawer);
+  document.getElementById('closeDrawer2').addEventListener('click', closeDrawer);
+  document.getElementById('applyFilters').addEventListener('click', closeDrawer);
+  function closeDrawer(){ drawer.classList.remove('open'); drawer.setAttribute('aria-hidden','true'); }
+
+  // Language pack
+  const STR = {
+    en: {
+      pillFresh: "Fresh food, extra savings",
+      homeHeadline: "Rescue tasty surplus food near you",
+      homeLead: "Zyada (زيادة) connects you to end‑of‑day fresh surplus made the same day — safely packed and discounted. Save money, reduce waste, feel good.",
+      btnSeeDeals: "See nearby deals",
+      btnListSurplus: "List your surplus",
+      kpiBagLbl: "Typical bag", kpiDiscLbl: "Discounts", kpiCityLbl: "Launch city",
+      mealsLbl: "rescued from the bin", co2Lbl: "emissions avoided", waterLbl: "conserved along the chain",
+      trust1Title: "Always fresh, same‑day",
+      trust1Text: "Made the same day • Timed pickup windows • Partners choose what’s at its best.",
+      trust2Title: "Quality you can see",
+      trust2Text: "Photo & details shown • Halal/veg filters • Limited quantities.",
+      trust3Title: "Safe & simple",
+      trust3Text: "Partner‑verified outlets • Sealed Surprise Bags • Pay on pickup (beta).",
+      tabHome: "Home", tabCustomers: "Customers", tabPartners: "Restaurants",
+      ctaFind: "Find deals", ctaPartner: "For restaurants", bbarFind: "Find deals", bbarPartner: "For restaurants",
+      searchPlaceholder: "Search item or restaurant…", mapHeadline: "Map (Leaflet) here", mapSub: "Pins show surplus bags near you",
+      partnerHeadline: "List your daily surplus in minutes", partnerLead: "Turn end‑of‑day surplus into new customers and extra revenue. No monthly fees during beta. Post items, set pickup window & discount, go live.",
+      s1Title: "Submit outlet details", s1Text: "We add you to the map with your logo & address",
+      s2Title: "Post today’s surplus", s2Text: "Name, price before/after, halal/veg, quantity, pickup times",
+      s3Title: "Customers reserve & pick up", s3Text: "Show code at pickup and pay on site (beta)",
+      addOffer: "Add offer (preview)",
+      fItem: "Item name", fCuisine: "Cuisine", fOrig: "Original price (AED)", fSale: "Sale price (AED)",
+      fStart: "Pickup start", fEnd: "Pickup end", fHalal: "Halal", fVeg: "Vegetarian", fImg: "Image URL",
+      saveOffer: "Save offer", cancelOffer: "Cancel", mvpNote: "In MVP, this form writes to your Google Sheet via Apps Script after Google login.",
+      drawerTitle: "Filters", drawerSearchLbl: "Search", drawerPriceLbl: "Max price (AED)", drawerHalal: "Halal", drawerVeg: "Veg",
+      brand: "Zyada", betaLabel: "UAE • Beta", langButton: "العربية"
+    },
+    ar: {
+      pillFresh: "طعام طازج وتوفير أكثر",
+      homeHeadline: "أنقذ الطعام الطازج القريب منك",
+      homeLead: "زيادة توصلك بفائض اليوم نفسه — مُعبأ بأمان وبأسعار مخفّضة. وفّر المال وقلّل الهدر وحسّن الأثر.",
+      btnSeeDeals: "اعرض العروض القريبة",
+      btnListSurplus: "أضف فائضك اليومي",
+      kpiBagLbl: "متوسط الحقيبة", kpiDiscLbl: "نسبة الخصم", kpiCityLbl: "مدينة الإطلاق",
+      mealsLbl: "وُفِّرت من الهدر", co2Lbl: "انبعاثات تم تجنبها", waterLbl: "لترات ماء تم توفيرها",
+      trust1Title: "دائمًا طازج وفي نفس اليوم",
+      trust1Text: "محضّر في نفس اليوم • مواعيد استلام محددة • الشركاء يختارون الأفضل.",
+      trust2Title: "جودة واضحة أمامك",
+      trust2Text: "صور وتفاصيل • فلاتر حلال/نباتي • كميات محدودة.",
+      trust3Title: "آمن وسهل",
+      trust3Text: "متاجر مُوثقة • حقائب مُحكمة • الدفع عند الاستلام (نسخة تجريبية).",
+      tabHome: "الرئيسية", tabCustomers: "العملاء", tabPartners: "الشركاء",
+      ctaFind: "اكتشف العروض", ctaPartner: "للمنشآت", bbarFind: "اكتشف العروض", bbarPartner: "للمنشآت",
+      searchPlaceholder: "ابحث عن صنف أو مطعم…", mapHeadline: "الخريطة (Leaflet) هنا", mapSub: "دبابيس تُظهر الحقائب القريبة",
+      partnerHeadline: "أضف فائض اليوم خلال دقائق", partnerLead: "حوّل فائض نهاية اليوم إلى زبائن جدد وإيراد إضافي. بدون رسوم شهرية خلال التجربة.",
+      s1Title: "أرسل بيانات الفرع", s1Text: "نضيفك على الخريطة مع شعارك وعنوانك",
+      s2Title: "أضف فائض اليوم", s2Text: "الاسم والسعر قبل/بعد وحلال/نباتي والكمية ومواعيد الاستلام",
+      s3Title: "يحجز العملاء ويستلمون", s3Text: "أظهر الرمز عند الاستلام والدفع في الموقع (تجريبي)",
+      addOffer: "إضافة عرض (معاينة)",
+      fItem: "اسم الصنف", fCuisine: "المطبخ", fOrig: "السعر الأصلي (درهم)", fSale: "سعر العرض (درهم)",
+      fStart: "بداية الاستلام", fEnd: "نهاية الاستلام", fHalal: "حلال", fVeg: "نباتي", fImg: "رابط الصورة",
+      saveOffer: "حفظ العرض", cancelOffer: "إلغاء", mvpNote: "في النسخة الأولى، يُحفَظ العرض في Google Sheets بعد تسجيل الدخول بحساب Google.",
+      drawerTitle: "فلاتر", drawerSearchLbl: "بحث", drawerPriceLbl: "أقصى سعر (درهم)", drawerHalal: "حلال", drawerVeg: "نباتي",
+      brand: "زيادة", betaLabel: "الإمارات • تجريبي", langButton: "English"
+    }
+  };
+
+  const nodes = {
+    pillFresh:'pillFresh', homeHeadline:'homeHeadline', homeLead:'homeLead', btnSeeDeals:'btnSeeDeals', btnListSurplus:'btnListSurplus',
+    kpiBagLbl:'kpiBagLbl', kpiDiscLbl:'kpiDiscLbl', kpiCityLbl:'kpiCityLbl',
+    mealsLbl:'mealsLbl', co2Lbl:'co2Lbl', waterLbl:'waterLbl',
+    trust1Title:'trust1Title', trust1Text:'trust1Text', trust2Title:'trust2Title', trust2Text:'trust2Text', trust3Title:'trust3Title', trust3Text:'trust3Text',
+    tabHome:'tabHome', tabCustomers:'tabCustomers', tabPartners:'tabPartners',
+    ctaFind:'ctaFind', ctaPartner:'ctaPartner', bbarFind:'bbarFind', bbarPartner:'bbarPartner',
+    searchPlaceholder:'searchPlaceholder', mapHeadline:'mapHeadline', mapSub:'mapSub',
+    partnerHeadline:'partnerHeadline', partnerLead:'partnerLead', s1Title:'s1Title', s1Text:'s1Text', s2Title:'s2Title', s2Text:'s2Text', s3Title:'s3Title', s3Text:'s3Text',
+    addOffer:'addOffer', fItem:'fItem', fCuisine:'fCuisine', fOrig:'fOrig', fSale:'fSale', fStart:'fStart', fEnd:'fEnd', fHalal:'fHalal', fVeg:'fVeg', fImg:'fImg',
+    saveOffer:'saveOffer', cancelOffer:'cancelOffer', mvpNote:'mvpNote', drawerTitle:'drawerTitle', drawerSearchLbl:'drawerSearchLbl', drawerPriceLbl:'drawerPriceLbl', drawerHalal:'drawerHalal', drawerVeg:'drawerVeg',
+    brand:'brand', betaLabel:'betaLabel', langToggle:'langToggle'
+  };
+
+  function setLang(lang){
+    const s = STR[lang];
+    // Update text nodes
+    for (const k in nodes){
+      const id = nodes[k];
+      const el = document.getElementById(id);
+      if (!el || s[k] === undefined) continue;
+      if (id === 'searchPlaceholder'){
+        el.placeholder = s[k];
+      } else {
+        el.textContent = s[k];
+      }
+    }
+    // dir & lang
+    const html = document.documentElement;
+    html.lang = (lang === 'ar' ? 'ar' : 'en');
+    html.dir = (lang === 'ar' ? 'rtl' : 'ltr');
+    document.body.style.fontFamily = (lang === 'ar' ? "'Tajawal', Inter, system-ui, Arial" : "Inter, system-ui, Arial, 'Tajawal'");
+  }
+
+  const langBtn = document.getElementById('langToggle');
+  let current = 'en';
+  langBtn.addEventListener('click', () => {
+    current = (current === 'en' ? 'ar' : 'en');
+    setLang(current);
+  });
+
+  // Initialize EN
+  setLang('en');
+</script>
+</body>
+</html>
