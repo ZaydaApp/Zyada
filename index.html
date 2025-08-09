@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zyada Live Offers</title>
+</head>
+<body>
+<h1>Zyada Live Offers</h1>
+<p>Fetching live offers from Google Sheets API:</p>
+<pre id="output">Loading...</pre>
+<script>
+const API_URL = "https://script.google.com/macros/s/AKfycbwLb9oF5dImxEh2XvLLUC8uqAbiLNj8WmfZWyp4ogdSxyuaAycpei7OW5i_VaXC0pM2OQ/exec";
+fetch(API_URL)
+  .then(res => res.json())
+  .then(data => {
+    document.getElementById('output').textContent = JSON.stringify(data, null, 2);
+  })
+  .catch(err => {
+    document.getElementById('output').textContent = "Error: " + err;
+  });
+</script>
+</body>
+</html>
