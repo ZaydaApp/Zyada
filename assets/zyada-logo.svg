@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="180" height="36" viewBox="0 0 360 72" role="img" aria-label="Zyada logo">
+  <defs>
+    <linearGradient id="g" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#27AE60"/>
+      <stop offset="1" stop-color="#2ECC71"/>
+    </linearGradient>
+    <mask id="biteMask">
+      <rect width="100%" height="100%" fill="white"/>
+      <!-- the bite removes fill from the first 'a' area -->
+      <circle cx="205" cy="39" r="9" fill="black"/>
+      <circle cx="212" cy="32" r="6.5" fill="black"/>
+      <circle cx="198" cy="31" r="5.5" fill="black"/>
+    </mask>
+  </defs>
+  <g fill="url(#g)">
+    <text x="0" y="50" font-family="Poppins, Inter, Arial, sans-serif" font-weight="800" font-size="48" letter-spacing="1">Zyada</text>
+  </g>
+  <!-- smile under -->
+  <path d="M60 58 C 95 78, 155 78, 190 58" stroke="#FF7A59" stroke-width="6" fill="none" stroke-linecap="round"/>
+  <!-- apply bite mask to cover the 'a' -->
+  <rect x="0" y="0" width="360" height="72" fill="none" mask="url(#biteMask)"/>
+</svg>
