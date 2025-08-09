@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Zyada • For restaurants & cafés</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Tajawal:wght@400;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+</head>
+<body>
+  <nav class="nav">
+    <div class="brand">
+      <a href="index.html"><img src="assets/zyada-logo.svg" alt="Zyada logo"></a>
+      <span class="name">Zyada</span>
+    </div>
+    <div class="nav-actions">
+      <a class="btn ghost" href="customers.html">Find deals</a>
+      <a class="btn" href="partners.html">For restaurants</a>
+    </div>
+  </nav>
+
+  <section class="section container">
+    <h1 style="font-size:34px">List your daily surplus in minutes</h1>
+    <p style="max-width:700px;color:var(--muted)">Zyada helps you turn end‑of‑day surplus into new customers and extra revenue. No monthly fees. Post today’s items, set pickup window and discount, and you’re live.</p>
+
+    <div class="grid3" style="margin-top:16px">
+      <div class="card"><h3>Zero subscriptions</h3><p>Free to list during beta. Keep operations simple and predictable.</p></div>
+      <div class="card"><h3>Flexible timing</h3><p>Post when you have surplus. Set pickup windows that suit your team.</p></div>
+      <div class="card"><h3>Halal‑first</h3><p>Built for the GCC with Halal and vegetarian flags so customers can filter easily.</p></div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <div class="step"><div class="n">1</div><div><strong>Submit your outlet details</strong><br><span class="muted">We’ll set you up on the map with your logo and address.</span></div></div>
+      <div class="step"><div class="n">2</div><div><strong>Post today’s surplus</strong><br><span class="muted">Name, cuisine, price before/after, pickup start–end, halal/veg, quantity.</span></div></div>
+      <div class="step"><div class="n">3</div><div><strong>Customers reserve & pick up</strong><br><span class="muted">They show their code at pickup and pay on site (beta flow).</span></div></div>
+    </div>
+
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:16px">
+      <a class="btn" id="partnerFormBtn" href="#" target="_blank" rel="noopener">Become a partner</a>
+      <a class="btn secondary" href="mailto:hello@zyada.ae">Contact us</a>
+    </div>
+
+    <div class="card" style="margin-top:18px">
+      <h3>Set up your Google Form (MVP)</h3>
+      <p>Until we release the partner dashboard, the fastest way to accept submissions is via <strong>Google Forms</strong> feeding a Google Sheet that powers the public map.</p>
+      <ul class="clean">
+        <li>Make a Google Form with fields: Partner name, Outlet address, Item name, Cuisine, Original price, Sale price, Halal (Yes/No), Veg (Yes/No), Quantity, Pickup start, Pickup end, Image URL.</li>
+        <li>Use Google Maps to get precise <strong>Latitude</strong> and <strong>Longitude</strong> for the outlet and include them as fields.</li>
+        <li>Link the form to a Sheet named <code>Offers</code> with matching columns.</li>
+        <li>Deploy the Apps Script in <code>apps-script/Code.gs</code> as a web app (<em>Anyone</em> access), then set your API URL in <code>js/config.js</code>.</li>
+      </ul>
+      <p>Put your Google Form link in <code>js/config.js</code> so the “Become a partner” button opens it.</p>
+    </div>
+  </section>
+
+  <footer class="footer container">
+    © <span id="yr"></span> Zyada • Restaurants
+  </footer>
+<script src="js/config.js"></script>
+<script>
+document.getElementById('yr').textContent = new Date().getFullYear();
+const btn = document.getElementById('partnerFormBtn');
+if (window.ZYADA_CONFIG && window.ZYADA_CONFIG.PARTNER_FORM_URL) btn.href = window.ZYADA_CONFIG.PARTNER_FORM_URL;
+else btn.style.display='none';
+</script>
+</body>
+</html>

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Zyada • Find surplus deals near you</title>
+<meta name="description" content="Live map of surplus food deals around you. Filter by price, cuisine, halal/veg."/>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css" integrity="" crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js" integrity="" crossorigin=""></script>
+</head>
+<body>
+  <nav class="nav">
+    <div class="brand">
+      <a href="index.html"><img src="assets/zyada-logo.svg" alt="Zyada logo"></a>
+      <span class="name">Zyada</span>
+    </div>
+    <div class="nav-actions">
+      <a class="btn ghost" href="index.html">Home</a>
+      <a class="btn" href="partners.html">For restaurants</a>
+    </div>
+  </nav>
+
+  <div class="layout">
+    <div>
+      <div class="filters">
+        <div class="group">
+          <input id="search" class="input" placeholder="Search item or restaurant…"/>
+        </div>
+        <div class="group">
+          <label>Max price</label>
+          <input id="maxPrice" type="range" min="5" max="100" step="5" value="50" class="input">
+          <span id="maxPriceLabel" class="tag">AED ≤ 50</span>
+        </div>
+        <div class="group">
+          <select id="cuisine" class="select" multiple size="1" title="Cuisine">
+            <option value="">All cuisines</option>
+          </select>
+        </div>
+        <div class="group">
+          <label><input id="halal" class="checkbox" type="checkbox"> Halal</label>
+          <label><input id="veg" class="checkbox" type="checkbox"> Veg</label>
+        </div>
+        <div class="group">
+          <button id="loc" class="btn ghost">Use my location</button>
+        </div>
+      </div>
+      <div id="map" class="map"></div>
+    </div>
+    <div>
+      <div class="controls">
+        <span class="badge">Live deals</span>
+        <button id="refresh" class="btn ghost">Refresh</button>
+      </div>
+      <div id="list" class="list"></div>
+    </div>
+  </div>
+
+<script src="js/config.js"></script>
+<script src="js/sample-data.js"></script>
+<script src="js/app.js"></script>
+<script src="js/customers.js"></script>
+</body>
+</html>

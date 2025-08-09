@@ -1,0 +1,89 @@
+:root{
+  --primary:#27AE60; /* fresh green */
+  --secondary:#FF7A59; /* coral */
+  --accent:#FFD166; /* sunny */
+  --bg:#FFF8F2; /* warm background */
+  --text:#1F2937; /* slate-800 */
+  --muted:#6B7280; /* slate-500 */
+  --card:#FFFFFF;
+  --ring: rgba(39,174,96,0.25);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+  color:var(--text);
+  background:var(--bg);
+  -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+}
+h1,h2,h3{margin:0 0 .5rem}
+a{color:var(--primary);text-decoration:none}
+.container{max-width:1100px;margin:0 auto;padding:16px}
+.nav{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 16px;position:sticky;top:0;background:rgba(255,248,242,0.8);backdrop-filter: blur(6px);border-bottom:1px solid #f0e9e3;
+}
+.brand{display:flex;align-items:center;gap:10px}
+.brand img{height:34px}
+.brand .name{font-weight:800;font-size:20px;letter-spacing:.2px}
+.badge{background:var(--accent);padding:4px 8px;border-radius:999px;font-size:12px;color:#7a5b00}
+.btn{
+  display:inline-flex;align-items:center;gap:8px;
+  background:var(--primary);color:white;border:none;border-radius:14px;padding:12px 16px;font-weight:700;cursor:pointer;
+  box-shadow: 0 6px 20px rgba(39,174,96,0.25);
+}
+.btn.secondary{background:var(--secondary);box-shadow:0 6px 20px rgba(255,122,89,0.25)}
+.btn.ghost{background:transparent;color:var(--text);border:1px solid #e6ded6}
+.btn:focus{outline:2px solid var(--ring);outline-offset:2px}
+.hero{
+  display:grid;grid-template-columns: 1.1fr .9fr;gap:28px;align-items:center;padding:40px 16px 20px;
+}
+.hero h1{font-size:42px;line-height:1.1}
+.hero p{color:var(--muted);font-size:18px}
+.hero-card{
+  background:var(--card);border:1px solid #eee3da;padding:20px;border-radius:20px;box-shadow: 0 10px 30px rgba(0,0,0,.04);
+}
+.hero .actions{display:flex;gap:12px;margin-top:14px;flex-wrap:wrap}
+.kpis{display:grid;grid-template-columns: repeat(3,1fr);gap:12px;margin-top:16px}
+.kpi{background:var(--card);border:1px solid #eee3da;padding:14px;border-radius:14px;text-align:center}
+.kpi .n{font-size:22px;font-weight:800}
+.section{padding:32px 16px}
+.grid3{display:grid;grid-template-columns: repeat(3,1fr);gap:16px}
+.card{background:var(--card);border:1px solid #eee3da;padding:16px;border-radius:16px}
+.card h3{font-size:18px}
+.footer{padding:24px 16px;border-top:1px solid #eee3da;color:#6b7280}
+.tag{display:inline-flex;align-items:center;gap:6px;background:#f7efe7;border:1px solid #eee3da;padding:6px 10px;border-radius:999px;font-size:12px}
+
+@media (max-width: 950px){
+  .hero{grid-template-columns: 1fr}
+}
+
+/* Customers page */
+.layout{
+  display:grid;grid-template-columns: 1.1fr .9fr;gap:16px;min-height: calc(100vh - 70px);padding:16px;
+}
+.filters{
+  display:flex;flex-wrap:wrap;gap:10px;background:var(--card);border:1px solid #eee3da;padding:12px;border-radius:14px;
+}
+.filters .group{display:flex;gap:8px;align-items:center}
+.input, .select{
+  padding:10px 12px;border-radius:12px;border:1px solid #e4dacf;background:white
+}
+.checkbox{width:18px;height:18px}
+.map{width:100%;height:70vh;border-radius:16px;border:1px solid #eee3da;overflow:hidden}
+.list{display:grid;gap:10px;max-height:70vh;overflow:auto}
+.offer{display:grid;grid-template-columns: 92px 1fr;gap:12px;background:var(--card);border:1px solid #eee3da;border-radius:14px;padding:10px}
+.offer img{width:92px;height:92px;border-radius:10px;object-fit:cover;border:1px solid #eee3da}
+.offer .name{font-weight:800}
+.offer .meta{font-size:12px;color:#6b7280}
+.price{display:flex;align-items:center;gap:10px}
+.price .now{font-size:18px;font-weight:800;color:var(--primary)}
+.price .was{text-decoration:line-through;color:#9ca3af;font-size:13px}
+.badge.discount{background: #e8fff2;border:1px dashed #b7f0cf;color:#0e7a3a}
+.controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:10px 0}
+
+/* Partners page */
+.step{display:flex;gap:12px;align-items:flex-start}
+.step .n{width:26px;height:26px;border-radius:50%;background:var(--primary);color:white;display:inline-flex;align-items:center;justify-content:center;font-weight:800;margin-top:4px}
+ul.clean{margin:0;padding-left:18px}
