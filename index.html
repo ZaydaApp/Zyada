@@ -6,30 +6,13 @@
   <title>Zyada — Fresh Surplus, Happy Savings</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
-    /* Force Leaflet underlay */
-.leaflet-container,
-.leaflet-pane,
-.leaflet-top,
-.leaflet-bottom {
-  z-index: 0 !important;
-}
-
-/* Make modal overlay topmost */
-.overlay {
-  z-index: 10000 !important;
-  position: fixed;
-  inset: 0;
-  background: rgba(15,23,42,.56);
-  display: none; /* show with JS */
-  align-items: center;
-  justify-content: center;
-}
-
     :root {
       --emerald:#22c55e; --emerald-600:#16a34a; --border:#e2e8f0; --muted:#64748b; --ink:#0f172a;
+      --bg:#ffffff; --chip:#f8fafc;
     }
     * { box-sizing:border-box }
-    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Inter, Arial; color:var(--ink); background:#fff; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Inter, Arial; color:var(--ink); background:var(--bg); }
+    a { color:inherit; }
     header { position:sticky; top:0; z-index:10; background:#fff; border-bottom:1px solid var(--border); padding:12px 16px; display:flex; gap:10px; align-items:center; justify-content:space-between; }
     .brand { font-weight:900; font-size:18px; display:flex; align-items:center; gap:10px }
     .btn { border:1px solid var(--border); padding:10px 14px; border-radius:12px; background:#fff; cursor:pointer; font-weight:700 }
@@ -50,18 +33,26 @@
     .was { text-decoration:line-through; color:#94a3b8; font-size:12px }
     .qtybadge { position:absolute; top:8px; right:8px; background:#111827; color:#fff; font-size:11px; padding:4px 8px; border-radius:999px }
     .soldout { background:#ef4444 !important }
-    .map { height:520px; border:1px solid var(--border); border-radius:16px; overflow:hidden }
+    .map { height:520px; border:1px solid var(--border); border-radius:16px; overflow:hidden; position:relative }
     #map { height:100% }
     @media(max-width:560px){ .offer { grid-template-columns:80px 1fr } .offer .reserve { grid-column:1/-1 } }
     .note { font-size:12px; color:var(--muted) }
+    /* Impact stats */
+    .stats { display:grid; gap:12px; grid-template-columns:1fr; margin-bottom:12px }
+    @media(min-width:720px){ .stats { grid-template-columns:repeat(3,1fr) } }
+    .stat { border:1px solid var(--border); border-radius:16px; padding:16px; background:#fff; display:flex; align-items:center; gap:12px }
+    .stat .icon { font-size:22px }
+    .stat .val { font-size:22px; font-weight:900 }
+    .stat .lbl { color:var(--muted); font-size:12px }
     /* Modal */
-    .overlay { position:fixed; inset:0; background:rgba(15,23,42,.5); display:none; align-items:center; justify-content:center; padding:16px; z-index:50 }
+    .overlay { position:fixed; inset:0; background:rgba(15,23,42,.56); display:none; align-items:center; justify-content:center; padding:16px; z-index:10000 !important; }
     .modal { width:100%; max-width:420px; background:#fff; border-radius:16px; border:1px solid var(--border); padding:18px }
     .modal h3 { margin:0 0 8px; }
-    .chip { display:inline-flex; align-items:center; gap:6px; border:1px dashed var(--border); padding:8px 10px; border-radius:12px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight:700 }
+    .chip { display:inline-flex; align-items:center; gap:6px; border:1px dashed var(--border); padding:8px 10px; border-radius:12px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight:700; background:var(--chip) }
     .copy { margin-left:8px; font-size:12px; color:#111827; border:1px solid var(--border); padding:6px 8px; border-radius:8px; background:#f8fafc; cursor:pointer }
-    /* My Reservation ribbon */
-    .ribbon { position:fixed; bottom:16px; left:16px; right:16px; display:none; gap:10px; align-items:center; justify-content:space-between; background:#111827; color:#fff; padding:12px 14px; border-radius:12px; z-index:40 }
+    .leaflet-container, .leaflet-pane, .leaflet-top, .leaflet-bottom { z-index:0 !important; }
+    /* Ribbon */
+    .ribbon { position:fixed; bottom:16px; left:16px; right:16px; display:none; gap:10px; align-items:center; justify-content:space-between; background:#111827; color:#fff; padding:12px 14px; border-radius:12px; z-index:9999 }
     .ribbon small { opacity:.9 }
     .ribbon .code { font-family: ui-monospace, Menlo, monospace; font-weight:900; }
   </style>
@@ -74,228 +65,97 @@
     </div>
   </header>
 
-  <main class="wrap grid two">
-    <section class="card">
-      <div class="filters">
-        <input id="q" class="input" placeholder="Search item or restaurant…" />
-        <button id="useLocation" class="btn">Use my location</button>
+  <main class="wrap">
+    <!-- Impact stats -->
+    <section class="stats" id="stats">
+      <div class="stat">
+        <div class="icon">🥗</div>
+        <div>
+          <div class="val" id="stMeals">0</div>
+          <div class="lbl">Meals rescued</div>
+        </div>
       </div>
-      <div class="map" style="margin-top:10px"><div id="map" aria-label="Map of nearby offers"></div></div>
+      <div class="stat">
+        <div class="icon">🌱</div>
+        <div>
+          <div class="val" id="stCO2">0</div>
+          <div class="lbl">CO₂ saved (kg)</div>
+        </div>
+      </div>
+      <div class="stat">
+        <div class="icon">💰</div>
+        <div>
+          <div class="val" id="stAED">0</div>
+          <div class="lbl">AED saved</div>
+        </div>
+      </div>
     </section>
-    <aside class="offers" id="offersList"></aside>
+
+    <section class="grid two">
+      <section class="card">
+        <div class="filters">
+          <input id="q" class="input" placeholder="Search item or restaurant…" />
+          <button id="useLocation" class="btn">Use my location</button>
+        </div>
+        <div class="map" style="margin-top:10px"><div id="map"></div></div>
+      </section>
+      <aside class="offers" id="offersList"></aside>
+    </section>
   </main>
 
-  <!-- Success modal -->
-  <div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-    <div class="modal">
-      <h3 id="modalTitle">Reservation confirmed 🎉</h3>
-      <div class="meta" id="modalSubtitle">Show this at pickup within <span id="modalExpiry"></span>.</div>
-      <div style="margin:12px 0">
-        <div class="chip">Pickup code: <span id="modalCode">—</span></div>
-        <button class="copy" id="copyCode">Copy</button>
-      </div>
-      <div id="modalDetails" class="note"></div>
-      <div style="display:flex; gap:8px; margin-top:12px">
-        <button class="btn" id="closeModal">Close</button>
-        <button class="btn primary" id="viewMyRes">Save as My Reservation</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- My Reservation ribbon -->
-  <div class="ribbon" id="ribbon">
-    <div>
-      <div style="font-weight:800">My reservation</div>
-      <small>Pickup code: <span class="code" id="ribCode">—</span> • Expires: <span id="ribExp">—</span></small>
-    </div>
-    <div class="row">
-      <button class="btn" id="copyRibbon">Copy code</button>
-      <button class="btn" id="dismissRibbon">Dismiss</button>
-    </div>
-  </div>
-
+  <!-- Scripts -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
-    const API_URL = 'https://script.google.com/macros/s/AKfycbz8FP3qBIgxjMfR_MsdcvaKYd97OHn3k1Uth_-bwVD-O6FYEabAVBD1HYritZm7lLhTBA/exec';
+    const API_URL = "https://script.google.com/macros/s/AKfycbzNeNuyhUNhrd3QY0b3Vt8ktgBgZTkAsx74hQTXIoNNcmCQ8TNSOaMr4v20-KRbVSOlwg/exec";
 
-    // Ping
     document.getElementById('ping').addEventListener('click', async () => {
-      try {
-        const res = await fetch(API_URL + '?route=health', { cache:'no-store' });
-        const j = await res.json();
-        alert('Health: ' + JSON.stringify(j));
-      } catch (e) { alert('API health failed'); }
+      const res = await fetch(API_URL + '?route=health');
+      alert(await res.text());
     });
 
-    // Map + data
-    let map, markers;
-    let OFFERS = [];
-    let filters = { q:'' };
-
-    function init() {
-      map = L.map('map').setView([25.2048, 55.2708], 11); // Dubai
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
-      markers = L.layerGroup().addTo(map);
-      fetchOffers();
-      loadRibbon();
-      document.getElementById('q').addEventListener('input', (e)=>{ filters.q = e.target.value.toLowerCase().trim(); render(); });
+    async function fetchMetrics() {
+      const res = await fetch(API_URL + '?route=metrics');
+      const m = await res.json();
+      document.getElementById('stMeals').textContent = m.meals || 0;
+      document.getElementById('stCO2').textContent = m.kgCO2e || 0;
+      document.getElementById('stAED').textContent = m.aedSaved || 0;
     }
 
-    async function fetchOffers(){
-      try {
-        const res = await fetch(API_URL + '?route=offers', { cache: 'no-store' });
-        const data = await res.json();
-        OFFERS = Array.isArray(data) ? data : [];
-        render();
-      } catch (err) {
-        console.error('Offers fetch failed', err);
-        document.getElementById('offersList').innerHTML = '<div class="note">Could not load offers.</div>';
-      }
+    async function fetchOffers() {
+      const res = await fetch(API_URL + '?route=offers');
+      const data = await res.json();
+      renderOffers(data);
     }
 
-    function matches(o){ 
-      const q = filters.q;
-      if(q) {
-        const hay = ((o.ItemName||'') + ' ' + (o.PartnerName||'') + ' ' + (o.OutletName||'') + ' ' + (o.Cuisine||'')).toLowerCase();
-        if(!hay.includes(q)) return false;
-      }
-      return true;
-    }
-
-    function render(){
-      markers.clearLayers();
+    function renderOffers(offers) {
       const list = document.getElementById('offersList');
       list.innerHTML = '';
-      const filtered = OFFERS.filter(matches);
-      const bounds = [];
-      if(filtered.length===0) { list.innerHTML = '<div class="note">No offers yet.</div>'; return; }
-      filtered.forEach(o => {
-        const img = o.ImageUrl || 'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?q=80&w=600&auto=format&fit=crop';
-        const qty = Number(o.Qty||0);
-        const soldOut = qty<=0;
-        const card = document.createElement('div'); card.className = 'offer';
-        card.dataset.offerId = o.OfferId || '';
-        card.innerHTML = `
-          <div class="thumb" style="background-image:url('${img}')"></div>
+      offers.forEach(o => {
+        const item = document.createElement('div');
+        item.className = 'offer';
+        item.innerHTML = `
+          <div class="thumb" style="background-image:url('${o.ImageUrl}')"></div>
           <div>
-            <div style="font-weight:900">${escapeHtml(o.ItemName||'')}</div>
-            <div class="meta">${escapeHtml(o.PartnerName||'')} • ${escapeHtml(o.Cuisine||'')}</div>
-            <div class="price"><span class="now">AED ${fmt(o.PriceAfter)}</span> ${o.PriceBefore?`<span class="was">AED ${fmt(o.PriceBefore)}</span>`:''}</div>
-            <div class="meta">Pickup ${escapeHtml(o.PickupStart||'')}–${escapeHtml(o.PickupEnd||'')}</div>
+            <strong>${o.ItemName}</strong>
+            <div class="meta">${o.OutletName}</div>
+            <div class="price"><span class="now">AED ${o.PriceAfter}</span><span class="was">AED ${o.PriceBefore}</span></div>
           </div>
-          <button class="btn primary reserve" data-offer-id="${escapeHtml(o.OfferId||'')}" ${soldOut?'disabled':''}>${soldOut?'Sold out':'Reserve'}</button>
-          <div class="qtybadge ${soldOut?'soldout':''}">${soldOut?'Sold out':('Qty '+qty)}</div>
         `;
-        list.appendChild(card);
-
-        if(!isNaN(o.Lat) && !isNaN(o.Lng)) {
-          const m = L.marker([Number(o.Lat), Number(o.Lng)]).addTo(markers);
-          m.bindPopup(`<b>${escapeHtml(o.ItemName||'')}</b><br/>AED ${fmt(o.PriceAfter||0)} • ${escapeHtml(o.PartnerName||'')}<br><button class="btn primary reserve" data-offer-id="${escapeHtml(o.OfferId||'')}" ${soldOut?'disabled':''}>${soldOut?'Sold out':'Reserve'}</button>`);
-          bounds.push([Number(o.Lat), Number(o.Lng)]);
-        }
-      });
-      if(bounds.length) map.fitBounds(bounds, { padding:[30,30] });
-
-      document.querySelectorAll('.reserve').forEach(btn => {
-        btn.addEventListener('click', (ev) => reserveFlow(ev.currentTarget.getAttribute('data-offer-id')));
+        list.appendChild(item);
       });
     }
 
-    async function reserveFlow(offerId){
-      if (!offerId) return alert('Offer unavailable');
-      const name = prompt('Your name (for pickup):','') || '';
-      if (!name.trim()) return alert('Please enter your name');
-      const phone = prompt('Mobile (optional):','') || '';
-
-      const payload = { offerId, customerName: name.trim(), customerPhone: phone.trim() };
-      try {
-        const res = await fetch(API_URL + '?route=reserve', {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify(payload)
-        });
-        const out = await res.json();
-        if (!out.ok) {
-          if (out.reason === 'sold_out') return alert('Sorry, this offer just sold out.');
-          return alert('Could not reserve: ' + (out.reason || 'unknown'));
-        }
-        // Success UI
-        showSuccess(out, offerId);
-        // Live qty decrement on the card
-        const card = document.querySelector(`.offer[data-offer-id="${offerId}"]`);
-        if (card) {
-          const badge = card.querySelector('.qtybadge');
-          if (badge) {
-            const current = badge.textContent.includes('Qty') ? parseInt(badge.textContent.replace(/[^0-9]/g,'')) : 0;
-            const newQty = Math.max(0, (isNaN(current)?0:current) - 1);
-            if (newQty <= 0) {
-              badge.textContent = 'Sold out';
-              badge.classList.add('soldout');
-              const b = card.querySelector('button.reserve'); if (b) { b.textContent = 'Sold out'; b.disabled = true; }
-            } else {
-              badge.textContent = 'Qty ' + newQty;
-            }
-          }
-        }
-      } catch (e) {
-        console.error('Reserve error', e);
-        alert('Network error while reserving');
-      }
+    function initMap() {
+      const map = L.map('map').setView([25.276987, 55.296249], 11);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap'
+      }).addTo(map);
     }
 
-    // Success modal + localStorage ribbon
-    function showSuccess(out, offerId){
-      const overlay = document.getElementById('overlay');
-      const codeEl = document.getElementById('modalCode');
-      const expEl = document.getElementById('modalExpiry');
-      const details = document.getElementById('modalDetails');
-      codeEl.textContent = out.PickupCode || '—';
-      expEl.textContent = out.ExpiresAt || '—';
-      details.textContent = 'Reservation ID: ' + (out.ReservationId||'—') + ' • Offer: ' + offerId;
-      overlay.style.display = 'flex';
-
-      document.getElementById('copyCode').onclick = () => navigator.clipboard.writeText(out.PickupCode||'').then(()=>alert('Code copied'));
-      document.getElementById('closeModal').onclick = () => overlay.style.display = 'none';
-      document.getElementById('viewMyRes').onclick = () => {
-        overlay.style.display = 'none';
-        saveRibbon(out);
-        loadRibbon();
-      };
-      // Auto-save too
-      saveRibbon(out);
-      loadRibbon();
-    }
-
-    function saveRibbon(out){
-      try {
-        localStorage.setItem('zyada_res', JSON.stringify({
-          code: out.PickupCode || '',
-          exp: out.ExpiresAt || '',
-          rid: out.ReservationId || ''
-        }));
-      } catch (e) {/* ignore */}
-    }
-    function loadRibbon(){
-      try {
-        const raw = localStorage.getItem('zyada_res');
-        const data = raw ? JSON.parse(raw) : null;
-        const rib = document.getElementById('ribbon');
-        if (data && data.code) {
-          document.getElementById('ribCode').textContent = data.code;
-          document.getElementById('ribExp').textContent = data.exp || '—';
-          rib.style.display = 'flex';
-          document.getElementById('copyRibbon').onclick = () => navigator.clipboard.writeText(data.code).then(()=>alert('Code copied'));
-          document.getElementById('dismissRibbon').onclick = () => { localStorage.removeItem('zyada_res'); rib.style.display='none'; };
-        } else {
-          rib.style.display = 'none';
-        }
-      } catch (e) {/* ignore */}
-    }
-
-    function fmt(n) { n = Number(n||0); return (Math.round(n*100)/100).toLocaleString(); }
-    function escapeHtml(str) { return String(str||'').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s])); }
-
-    init();
+    fetchMetrics();
+    fetchOffers();
+    initMap();
   </script>
 </body>
 </html>
