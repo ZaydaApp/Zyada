@@ -37,6 +37,7 @@
     #map { height:100% }
     @media(max-width:560px){ .offer { grid-template-columns:80px 1fr } .offer .reserve { grid-column:1/-1 } }
     .note { font-size:12px; color:var(--muted) }
+
     /* Impact stats */
     .stats { display:grid; gap:12px; grid-template-columns:1fr; margin-bottom:12px }
     @media(min-width:720px){ .stats { grid-template-columns:repeat(3,1fr) } }
@@ -44,13 +45,15 @@
     .stat .icon { font-size:22px }
     .stat .val { font-size:22px; font-weight:900 }
     .stat .lbl { color:var(--muted); font-size:12px }
-    /* Modal */
+
+    /* Modal (above Leaflet) */
     .overlay { position:fixed; inset:0; background:rgba(15,23,42,.56); display:none; align-items:center; justify-content:center; padding:16px; z-index:10000 !important; }
     .modal { width:100%; max-width:420px; background:#fff; border-radius:16px; border:1px solid var(--border); padding:18px }
     .modal h3 { margin:0 0 8px; }
     .chip { display:inline-flex; align-items:center; gap:6px; border:1px dashed var(--border); padding:8px 10px; border-radius:12px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight:700; background:var(--chip) }
     .copy { margin-left:8px; font-size:12px; color:#111827; border:1px solid var(--border); padding:6px 8px; border-radius:8px; background:#f8fafc; cursor:pointer }
     .leaflet-container, .leaflet-pane, .leaflet-top, .leaflet-bottom { z-index:0 !important; }
+
     /* Ribbon */
     .ribbon { position:fixed; bottom:16px; left:16px; right:16px; display:none; gap:10px; align-items:center; justify-content:space-between; background:#111827; color:#fff; padding:12px 14px; border-radius:12px; z-index:9999 }
     .ribbon small { opacity:.9 }
@@ -103,59 +106,154 @@
     </section>
   </main>
 
-  <!-- Scripts -->
+  <!-- Success modal -->
+  <div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal">
+      <h3 id="modalTitle">Reservation confirmed 🎉</h3>
+      <div class="meta" id="modalSubtitle">Show this at pickup within <span id="modalExpiry"></span>.</div>
+      <div style="margin:12px 0">
+        <div class="chip">Pickup code: <span id="modalCode">—</span></div>
+        <button class="copy" id="copyCode">Copy</button>
+      </div>
+      <div id="modalDetails" class="note"></div>
+      <div style="display:flex; gap:8px; margin-top:12px">
+        <button class="btn" id="closeModal">Close</button>
+        <button class="btn primary" id="viewMyRes">Save as My Reservation</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- My Reservation ribbon -->
+  <div class="ribbon" id="ribbon">
+    <div>
+      <div style="font-weight:800">My reservation</div>
+      <small>Pickup code: <span class="code" id="ribCode">—</span> • Expires: <span id="ribExp">—</span></small>
+    </div>
+    <div class="row">
+      <button class="btn" id="copyRibbon">Copy code</button>
+      <button class="btn" id="dismissRibbon">Dismiss</button>
+    </div>
+  </div>
+
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     const API_URL = "https://script.google.com/macros/s/AKfycbzNeNuyhUNhrd3QY0b3Vt8ktgBgZTkAsx74hQTXIoNNcmCQ8TNSOaMr4v20-KRbVSOlwg/exec";
 
-    document.getElementById('ping').addEventListener('click', async () => {
-      const res = await fetch(API_URL + '?route=health');
-      alert(await res.text());
+    /* ---------- Simple helpers ---------- */
+    const fmt = n => (Math.round(Number(n||0)*100)/100).toLocaleString();
+    const esc = s => String(s||'').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;', "'":'&#39;'}[ch]));
+    const $  = sel => document.querySelector(sel);
+
+    /* ---------- Ping ---------- */
+    $('#ping').addEventListener('click', async () => {
+      try { const r = await fetch(API_URL + '?route=health', { cache:'no-store' }); alert(await r.text()); }
+      catch { alert('API health failed'); }
     });
 
+    /* ---------- Metrics ---------- */
     async function fetchMetrics() {
-      const res = await fetch(API_URL + '?route=metrics');
-      const m = await res.json();
-      document.getElementById('stMeals').textContent = m.meals || 0;
-      document.getElementById('stCO2').textContent = m.kgCO2e || 0;
-      document.getElementById('stAED').textContent = m.aedSaved || 0;
+      try {
+        const r = await fetch(API_URL + '?route=metrics', { cache:'no-store' });
+        const m = await r.json();
+        $('#stMeals').textContent = (m.meals||0).toLocaleString();
+        $('#stCO2').textContent   = (m.kgCO2e||0).toLocaleString();
+        $('#stAED').textContent   = (m.aedSaved||0).toLocaleString();
+      } catch {}
+    }
+
+    /* ---------- Map / Offers ---------- */
+    let map, markers, OFFERS = [], filters = { q:'' };
+
+    function initMap() {
+      map = L.map('map').setView([25.276987, 55.296249], 11); // Dubai
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
+      markers = L.layerGroup().addTo(map);
     }
 
     async function fetchOffers() {
-      const res = await fetch(API_URL + '?route=offers');
-      const data = await res.json();
-      renderOffers(data);
+      try {
+        const r = await fetch(API_URL + '?route=offers', { cache:'no-store' });
+        OFFERS = await r.json();
+        render();
+      } catch (e) {
+        console.error(e);
+        $('#offersList').innerHTML = '<div class="note">Could not load offers.</div>';
+      }
     }
 
-    function renderOffers(offers) {
-      const list = document.getElementById('offersList');
+    function matches(o){
+      const q = filters.q;
+      if (!q) return true;
+      const hay = ((o.ItemName||'') + ' ' + (o.PartnerName||'') + ' ' + (o.OutletName||'') + ' ' + (o.Cuisine||'')).toLowerCase();
+      return hay.includes(q);
+    }
+
+    function render(){
+      markers.clearLayers();
+      const list = $('#offersList');
       list.innerHTML = '';
-      offers.forEach(o => {
-        const item = document.createElement('div');
-        item.className = 'offer';
-        item.innerHTML = `
-          <div class="thumb" style="background-image:url('${o.ImageUrl}')"></div>
+      const filtered = (Array.isArray(OFFERS)?OFFERS:[]).filter(matches);
+      const bounds = [];
+      if (!filtered.length) { list.innerHTML = '<div class="note">No offers yet.</div>'; return; }
+
+      filtered.forEach(o => {
+        const img = o.ImageUrl || 'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?q=80&w=600&auto=format&fit=crop';
+        const qty = Number(o.Qty||0);
+        const soldOut = qty <= 0;
+
+        const card = document.createElement('div');
+        card.className = 'offer';
+        card.dataset.offerId = o.OfferId || '';
+        card.innerHTML = `
+          <div class="thumb" style="background-image:url('${img}')"></div>
           <div>
-            <strong>${o.ItemName}</strong>
-            <div class="meta">${o.OutletName}</div>
-            <div class="price"><span class="now">AED ${o.PriceAfter}</span><span class="was">AED ${o.PriceBefore}</span></div>
+            <strong>${esc(o.ItemName||'')}</strong>
+            <div class="meta">${esc(o.PartnerName||'')} • ${esc(o.Cuisine||'')}</div>
+            <div class="price"><span class="now">AED ${fmt(o.PriceAfter)}</span> ${o.PriceBefore?`<span class="was">AED ${fmt(o.PriceBefore)}</span>`:''}</div>
+            <div class="meta">Pickup ${esc(o.PickupStart||'')}–${esc(o.PickupEnd||'')}</div>
           </div>
+          <button class="btn primary reserve" data-offer-id="${esc(o.OfferId||'')}" ${soldOut?'disabled':''}>${soldOut?'Sold out':'Reserve'}</button>
+          <div class="qtybadge ${soldOut?'soldout':''}">${soldOut?'Sold out':('Qty '+qty)}</div>
         `;
-        list.appendChild(item);
+        list.appendChild(card);
+
+        if (!isNaN(o.Lat) && !isNaN(o.Lng)) {
+          const m = L.marker([Number(o.Lat), Number(o.Lng)]).addTo(markers);
+          m.bindPopup(`<b>${esc(o.ItemName||'')}</b><br/>AED ${fmt(o.PriceAfter||0)} • ${esc(o.PartnerName||'')}<br><button class="btn primary reserve" data-offer-id="${esc(o.OfferId||'')}" ${soldOut?'disabled':''}>${soldOut?'Sold out':'Reserve'}</button>`);
+          bounds.push([Number(o.Lat), Number(o.Lng)]);
+        }
+      });
+      if (bounds.length) map.fitBounds(bounds, { padding:[30,30] });
+
+      document.querySelectorAll('.reserve').forEach(btn => {
+        btn.addEventListener('click', (ev) => reserveFlow(ev.currentTarget.getAttribute('data-offer-id')));
       });
     }
 
-    function initMap() {
-      const map = L.map('map').setView([25.276987, 55.296249], 11);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '© OpenStreetMap'
-      }).addTo(map);
-    }
+    /* ---------- Reserve Flow ---------- */
+    async function reserveFlow(offerId){
+      if (!offerId) return alert('Offer unavailable');
+      const name = prompt('Your name (for pickup):','') || '';
+      if (!name.trim()) return alert('Please enter your name');
+      const phone = prompt('Mobile (optional):','') || '';
 
-    fetchMetrics();
-    fetchOffers();
-    initMap();
-  </script>
-</body>
-</html>
+      const payload = { offerId, customerName: name.trim(), customerPhone: phone.trim() };
+      try {
+        const res = await fetch(API_URL + '?route=reserve', {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(payload)
+        });
+        const out = await res.json();
+        if (!out.ok) {
+          if (out.reason === 'sold_out') return alert('Sorry, this offer just sold out.');
+          return alert('Could not reserve: ' + (out.reason || 'unknown'));
+        }
+        showSuccess(out, offerId);
+        // Live decrement on card
+        const card = document.querySelector(`.offer[data-offer-id="${offerId}"]`);
+        if (card) {
+          const badge = card.querySelector('.qtybadge');
+          if (badge) {
+            const current = badge.textContent.includes('Qty') ? parseInt(badge.textContent.replace(/[^0-9]/g,'')) : 0;
+            const newQty = Math.max(0,
