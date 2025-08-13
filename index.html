@@ -102,6 +102,9 @@
         </div>
         <div class="map" style="margin-top:10px"><div id="map"></div></div>
       </section>
+      <!-- Add this inside <section class="grid two">, above <aside class="offers" ...> -->
+<div id="offersCount" class="note" style="margin:0 0 4px 0;"></div>
+
       <aside class="offers" id="offersList"></aside>
     </section>
   </main>
@@ -170,16 +173,103 @@
       markers = L.layerGroup().addTo(map);
     }
 
-    async function fetchOffers() {
-      try {
-        const r = await fetch(API_URL + '?route=offers', { cache:'no-store' });
-        OFFERS = await r.json();
-        render();
-      } catch (e) {
-        console.error(e);
-        $('#offersList').innerHTML = '<div class="note">Could not load offers.</div>';
-      }
+    <script>
+  // Replace your existing fetchOffers and render with these versions
+  async function fetchOffers() {
+    try {
+      const r = await fetch(API_URL + '?route=offers', { cache:'no-store' });
+      const data = await r.json();
+      console.log('OFFERS JSON:', data);             // <-- see exact payload in DevTools
+      OFFERS = Array.isArray(data) ? data : [];
+      // Show count
+      const count = document.getElementById('offersCount');
+      if (count) count.textContent = `Loaded ${OFFERS.length} offer(s)`;
+      render();
+    } catch (e) {
+      console.error('Offers fetch failed:', e);
+      document.getElementById('offersList').innerHTML = '<div class="note">Could not load offers.</div>';
     }
+  }
+
+  function render() {
+    if (!Array.isArray(OFFERS)) OFFERS = [];
+    markers && markers.clearLayers && markers.clearLayers();
+
+    const list = document.getElementById('offersList');
+    list.innerHTML = '';
+
+    // no text filter = show all
+    const filtered = OFFERS;
+    if (filtered.length === 0) {
+      list.innerHTML = '<div class="note">No offers yet.</div>';
+      return;
+    }
+
+    const bounds = [];
+    filtered.forEach(o => {
+      // Be tolerant about missing fields
+      const itemName   = o.ItemName   ?? o.itemName   ?? 'Surprise Bag';
+      const partner    = o.PartnerName?? o.partnerName?? (o.OutletName || '');
+      const cuisine    = o.Cuisine    ?? '';
+      const before     = Number(o.PriceBefore ?? 0);
+      const after      = Number(o.PriceAfter  ?? 0);
+      const qty        = Number(o.Qty ?? 0);
+      const offerId    = o.OfferId ?? o.offerId ?? '';
+      const img        = (o.ImageUrl || o.imageUrl || '').trim() ||
+                         'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?q=80&w=600&auto=format&fit=crop';
+      const pickupFrom = (o.PickupStart || o.pickupStart || '').toString();
+      const pickupTo   = (o.PickupEnd   || o.pickupEnd   || '').toString();
+
+      const soldOut = qty <= 0;
+
+      // Card
+      const card = document.createElement('div');
+      card.className = 'offer';
+      card.dataset.offerId = offerId;
+      card.innerHTML = `
+        <div class="thumb" style="background-image:url('${img.replace(/'/g, "\\'")}')"></div>
+        <div>
+          <strong>${escapeHtml(itemName)}</strong>
+          <div class="meta">${escapeHtml(partner)} ${cuisine ? '• ' + escapeHtml(cuisine) : ''}</div>
+          <div class="price">
+            <span class="now">AED ${fmt(after)}</span>
+            ${before ? `<span class="was">AED ${fmt(before)}</span>` : ''}
+          </div>
+          <div class="meta">${pickupFrom && pickupTo ? `Pickup ${escapeHtml(pickupFrom)}–${escapeHtml(pickupTo)}` : ''}</div>
+        </div>
+        <button class="btn primary reserve" data-offer-id="${escapeHtml(offerId)}" ${soldOut?'disabled':''}>${soldOut?'Sold out':'Reserve'}</button>
+        <div class="qtybadge ${soldOut?'soldout':''}">${soldOut?'Sold out':('Qty '+qty)}</div>
+      `;
+      list.appendChild(card);
+
+      // Marker (only if lat/lng look numeric)
+      const lat = Number(o.Lat ?? o.lat);
+      const lng = Number(o.Lng ?? o.lng);
+      if (!Number.isNaN(lat) && !Number.isNaN(lng) && markers) {
+        const m = L.marker([lat, lng]).addTo(markers);
+        m.bindPopup(`<b>${escapeHtml(itemName)}</b><br/>AED ${fmt(after)}${partner? ' • '+escapeHtml(partner):''}<br>
+          <button class="btn primary reserve" data-offer-id="${escapeHtml(offerId)}" ${soldOut?'disabled':''}>${soldOut?'Sold out':'Reserve'}</button>`);
+        bounds.push([lat, lng]);
+      }
+    });
+
+    if (bounds.length && map) map.fitBounds(bounds, { padding:[30,30] });
+
+    // Wire Reserve buttons
+    document.querySelectorAll('.reserve').forEach(btn => {
+      btn.addEventListener('click', (ev) => {
+        const id = ev.currentTarget.getAttribute('data-offer-id') || '';
+        if (!id) return alert('Offer unavailable');
+        reserveFlow(id);
+      });
+    });
+  }
+
+  // tiny helpers used above (add once if not present)
+  function fmt(n) { n = Number(n||0); return (Math.round(n*100)/100).toLocaleString(); }
+  function escapeHtml(str) { return String(str||'').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]); }
+</script>
+
 
     function matches(o){
       const q = filters.q;
