@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Zyada — Reserve (New Tab GET)</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    body { font-family: system-ui, Inter, Arial; margin:0 }
+    header { padding:12px 16px; border-bottom:1px solid #e2e8f0; display:flex; gap:10px; align-items:center; justify-content:space-between }
+    .btn { padding:10px 14px; border-radius:12px; border:1px solid #e2e8f0; background:#fff; cursor:pointer; font-weight:700 }
+    .btn.primary { background:#22c55e; color:#fff; border-color:#22c55e }
+    .wrap { max-width:1100px; margin:0 auto; padding:16px }
+    .grid { display:grid; gap:16px }
+    @media(min-width:960px){ .two { grid-template-columns:1.2fr .8fr } }
+    .card { border:1px solid #e2e8f0; border-radius:16px; padding:16px }
+    .offers { display:grid; gap:10px; max-height:520px; overflow:auto }
+    .offer { display:grid; grid-template-columns:92px 1fr auto; gap:12px; border:1px solid #e2e8f0; border-radius:14px; padding:10px }
+    .thumb { width:92px; height:92px; border-radius:12px; background-size:cover; background-position:center; border:1px solid #e2e8f0 }
+    .meta { color:#64748b; font-size:12px }
+    .price { display:flex; gap:8px; align-items:center; margin-top:4px }
+    .now { color:#047857; font-weight:900 }
+    .was { text-decoration:line-through; color:#94a3b8; font-size:12px }
+    .map { height:520px; border:1px solid #e2e8f0; border-radius:16px; overflow:hidden }
+    #map { height:100% }
+    .form { display:grid; gap:8px }
+    .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center }
+    input[type=text] { padding:10px 12px; border:1px solid #e2e8f0; border-radius:10px; min-width:220px }
+    label { font-size:12px; color:#475569 }
+    .note { font-size:12px; color:#64748b }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="row">
+      <strong>Zyada</strong>
+      <span id="count" class="note"></span>
+    </div>
+    <div class="row">
+      <button class="btn" id="ping">Ping API</button>
+    </div>
+  </header>
+
+  <main class="wrap grid two">
+    <section class="card">
+      <h3>Map</h3>
+      <div class="map" style="margin-top:10px"><div id="map"></div></div>
+    </section>
+
+    <aside class="card">
+      <h3>Manual Reserve (works even if no cards)</h3>
+      <div class="form">
+        <label>OfferId</label>
+        <input id="offerId" type="text" placeholder="e.g. OID-000101" />
+        <label>Your name</label>
+        <input id="custName" type="text" placeholder="Your name" />
+        <label>Mobile (optional)</label>
+        <input id="custPhone" type="text" placeholder="05xxxxxxxx" />
+        <div class="row">
+          <button class="btn primary" id="reserveNav">Reserve (opens result)</button>
+          <button class="btn" id="reserveGet">Reserve via GET (AJAX)</button>
+          <button class="btn" id="reservePost">Reserve via POST (AJAX)</button>
+        </div>
+        <div class="note">Tip: copy an OfferId from your Offers sheet (must have Qty &gt; 0).</div>
+      </div>
+    </aside>
+
+    <section class="card" style="grid-column:1/-1">
+      <h3>Offers</h3>
+      <div class="offers" id="offersList"></div>
+    </section>
+  </main>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const API_URL = 'https://script.google.com/macros/s/AKfycbw4_sp92HSjDtfxi0s5xbszhYTx_msSG3CsSi1wuAR9woak4f5pHLIfVJV30EsHgfU6UQ/exec';
+
+    document.getElementById('ping').addEventListener('click', async () => {
+      const res = await fetch(API_URL + '?route=health', { cache:'no-store' });
+      const j = await res.json();
+      alert('Health: ' + JSON.stringify(j));
+    });
+
+    document.getElementById('reserveNav').addEventListener('click', () => reserveNAV());
+    document.getElementById('reserveGet').addEventListener('click', () => reserveGET());
+    document.getElementById('reservePost').addEventListener('click', () => reservePOST());
+
+    function reserveNAV(){
+      const offerId = document.getElementById('offerId').value.trim();
+      const name = document.getElementById('custName').value.trim() || 'WebTest';
+      const phone = document.getElementById('custPhone').value.trim();
+      if(!offerId) return alert('Enter OfferId');
+      const url = API_URL + '?route=reserve_get&offerId=' + encodeURIComponent(offerId) + '&name=' + encodeURIComponent(name) + '&phone=' + encodeURIComponent(phone);
+      window.open(url, '_blank', 'noopener');
+    }
+
+    async function reserveGET(){
+      const offerId = document.getElementById('offerId').value.trim();
+      const name = document.getElementById('custName').value.trim() || 'WebTest';
+      const phone = document.getElementById('custPhone').value.trim();
+      if(!offerId) return alert('Enter OfferId');
+      const url = API_URL + '?route=reserve_get&offerId=' + encodeURIComponent(offerId) + '&name=' + encodeURIComponent(name) + '&phone=' + encodeURIComponent(phone);
+      try {
+        const r = await fetch(url, { cache: 'no-store' });
+        const out = await r.json();
+        console.log('GET reserve:', out);
+        if(!out.ok) return alert('Reserve failed: ' + (out.reason || 'unknown'));
+        alert('Reserved!\nReservation: ' + out.ReservationId + '\nCode: ' + out.PickupCode + '\nExpires: ' + out.ExpiresAt);
+      } catch(e) { console.error(e); alert('Network error (GET)'); }
+    }
+
+    async function reservePOST(){
+      const offerId = document.getElementById('offerId').value.trim();
+      const name = document.getElementById('custName').value.trim() || 'WebTest';
+      const phone = document.getElementById('custPhone').value.trim();
+      if(!offerId) return alert('Enter OfferId');
+      try {
+        const r = await fetch(API_URL + '?route=reserve', {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ offerId, customerName:name, customerPhone:phone })
+        });
+        const out = await r.json();
+        console.log('POST reserve:', out);
+        if(!out.ok) return alert('Reserve failed: ' + (out.reason || 'unknown'));
+        alert('Reserved!\nReservation: ' + out.ReservationId + '\nCode: ' + out.PickupCode + '\nExpires: ' + out.ExpiresAt);
+      } catch(e) { console.error(e); alert('Network error (POST)'); }
+    }
+
+    let map, markers, OFFERS = [];
+
+    function init() {
+      map = L.map('map').setView([25.2048, 55.2708], 11);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+      markers = L.layerGroup().addTo(map);
+      fetchOffers();
+    }
+
+    async function fetchOffers() {
+      try {
+        const res = await fetch(API_URL + '?route=offers', { cache:'no-store' });
+        const data = await res.json();
+        console.log('Offers:', data);
+        OFFERS = Array.isArray(data) ? data : [];
+        document.getElementById('count').textContent = OFFERS.length + ' offers';
+        render();
+      } catch (e) {
+        console.error('Offers fetch failed', e);
+        document.getElementById('offersList').innerHTML = '<div class="note">Could not load offers.</div>';
+      }
+    }
+
+    function render() {
+      markers.clearLayers();
+      const list = document.getElementById('offersList');
+      list.innerHTML = '';
+      if (!OFFERS.length) {
+        list.innerHTML = '<div class="note">No offers yet. Use the Manual Reserve form above.</div>';
+        return;
+      }
+      const bounds = [];
+      OFFERS.forEach(o => {
+        const img = o.ImageUrl || 'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?q=80&w=600&auto=format&fit=crop';
+        const card = document.createElement('div'); card.className = 'offer';
+        card.innerHTML = `
+          <div class="thumb" style="background-image:url('${img}')"></div>
+          <div>
+            <div style="font-weight:900">${escapeHtml(o.ItemName||'Item')}</div>
+            <div class="meta">${escapeHtml(o.PartnerName||'Partner')} • ${escapeHtml(o.Cuisine||'')}</div>
+            <div class="price"><span class="now">AED ${fmt(o.PriceAfter||0)}</span> ${(o.PriceBefore?`<span class="was">AED ${fmt(o.PriceBefore)}</span>`:'')}</div>
+            <div class="meta">Pickup ${escapeHtml(o.PickupStart||'')}–${escapeHtml(o.PickupEnd||'')}</div>
+          </div>
+          <button class="btn primary reserve" data-offer-id="${escapeHtml(o.OfferId||'')}">Reserve</button>
+        `;
+        list.appendChild(card);
+
+        if (o.Lat && o.Lng) {
+          const m = L.marker([Number(o.Lat), Number(o.Lng)]).addTo(markers);
+          m.bindPopup(`<b>${escapeHtml(o.ItemName||'Item')}</b><br/>AED ${fmt(o.PriceAfter||0)} • ${escapeHtml(o.PartnerName||'')}<br><button class='btn primary reserve' data-offer-id='${escapeHtml(o.OfferId||'')}'>Reserve</button>`);
+          bounds.push([Number(o.Lat), Number(o.Lng)]);
+        }
+      });
+      if (bounds.length) map.fitBounds(bounds, { padding:[30,30] });
+
+      document.querySelectorAll('.reserve').forEach(btn => {
+        btn.addEventListener('click', (ev) => {
+          ev.preventDefault();
+          const id = btn.getAttribute('data-offer-id');
+          document.getElementById('offerId').value = id || '';
+          alert('Offer selected: ' + id + '\nUse the Manual Reserve form above.');
+        });
+      });
+    }
+
+    function fmt(n) { return (Math.round((n||0)*100)/100).toLocaleString(); }
+    function escapeHtml(str) { return String(str||'').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s])); }
+
+    init();
+  </script>
+</body>
+</html>
