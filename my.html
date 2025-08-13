@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Zyada Reservation</title>
+  <style>
+    :root { --border:#e2e8f0; --muted:#64748b; --ink:#0f172a; }
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Inter, Arial; color:var(--ink); }
+    .wrap { max-width:720px; margin:0 auto; padding:20px 16px }
+    h1 { font-size:20px; margin:0 0 8px; }
+    .card { border:1px solid var(--border); border-radius:14px; padding:16px; }
+    .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center }
+    .input { padding:12px; border:1px solid var(--border); border-radius:12px; width:100%; max-width:320px }
+    .btn { padding:12px 16px; border-radius:12px; border:1px solid var(--border); background:#fff; cursor:pointer; font-weight:700 }
+    .note { color:var(--muted); font-size:12px }
+    .result { margin-top:12px; border:1px dashed var(--border); padding:10px; border-radius:12px }
+    .code { font-family: ui-monospace, Menlo, monospace; font-weight:900; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Find my reservation</h1>
+    <div class="card">
+      <div class="row">
+        <input id="rid" class="input" placeholder="Reservation ID (or leave empty and use code/phone)" />
+        <input id="code" class="input" placeholder="Pickup code (6 digits)" inputmode="numeric" />
+        <input id="phone" class="input" placeholder="Phone (optional)" />
+        <button class="btn" id="lookup">Lookup</button>
+      </div>
+      <div id="out" class="result note">Enter your details and tap Lookup.</div>
+    </div>
+  </div>
+  <script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbzw1_ZTMPCKgX9rUf38LxfNU2kD_cNGoGveeti-1XAy2IhpQR-SFF1TyIpDpqdtfZeUNg/exec";
+    document.getElementById('lookup').addEventListener('click', async () => {
+      const rid = document.getElementById('rid').value.trim();
+      const code = document.getElementById('code').value.trim();
+      const phone = document.getElementById('phone').value.trim();
+      const params = new URLSearchParams();
+      if (rid) params.set('rid', rid);
+      if (code) params.set('code', code);
+      if (phone) params.set('phone', phone);
+      try {
+        const res = await fetch(API_URL + '?route=reservation&' + params.toString(), { cache:'no-store' });
+        const j = await res.json();
+        if (j && j.ReservationId) show(j);
+        else show({ error: 'Not found' });
+      } catch (e) { show({ error: 'Network error' }); }
+    });
+
+    function show(j) {
+      const out = document.getElementById('out');
+      if (j.error) { out.textContent = '❌ ' + j.error; return; }
+      out.innerHTML = `
+        <div>Reservation: <strong>${j.ReservationId}</strong></div>
+        <div>Status: ${j.Status}</div>
+        <div>Offer: ${j.OfferId}</div>
+        <div>Pickup code: <span class="code">${j.PickupCode}</span></div>
+        <div>Expires: ${j.ExpiresAt}</div>
+      `;
+    }
+  </script>
+</body>
+</html>
