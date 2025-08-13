@@ -6,6 +6,25 @@
   <title>Zyada — Fresh Surplus, Happy Savings</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
+    /* Force Leaflet underlay */
+.leaflet-container,
+.leaflet-pane,
+.leaflet-top,
+.leaflet-bottom {
+  z-index: 0 !important;
+}
+
+/* Make modal overlay topmost */
+.overlay {
+  z-index: 10000 !important;
+  position: fixed;
+  inset: 0;
+  background: rgba(15,23,42,.56);
+  display: none; /* show with JS */
+  align-items: center;
+  justify-content: center;
+}
+
     :root {
       --emerald:#22c55e; --emerald-600:#16a34a; --border:#e2e8f0; --muted:#64748b; --ink:#0f172a;
     }
