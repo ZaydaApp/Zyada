@@ -225,9 +225,22 @@
         }, ()=>alert('Could not get your location'));
       });
 
-      initMap();
-      fetchMetrics();
-      fetchOffers();
+      <script>
+// 1) Fire-and-forget expiry once on load
+fetch(API_URL + '?route=expire', { cache: 'no-store' }).catch(()=>{});
+
+// ... your existing init calls:
+initMap();
+fetchMetrics();
+fetchOffers();
+
+// 2) (Optional) Refresh expiry every 5 minutes while user stays on the page
+setInterval(() => {
+  fetch(API_URL + '?route=expire', { cache: 'no-store' }).catch(()=>{});
+}, 5 * 60 * 1000);
+</script>
+
+      
     });
   })();
   </script>
