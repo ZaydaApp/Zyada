@@ -35,7 +35,7 @@
     @media(min-width:720px){.stats{grid-template-columns:repeat(3,1fr)}}
     .stat{border:1px solid var(--border);border-radius:16px;padding:16px;background:#fff;display:flex;align-items:center;gap:12px}
     .stat .icon{font-size:22px}.stat .val{font-size:22px;font-weight:900}.stat .lbl{color:var(--muted);font-size:12px}
-    /* Leaflet below overlays */
+    /* Keep Leaflet below overlays */
     .leaflet-container,.leaflet-pane,.leaflet-top,.leaflet-bottom{z-index:0!important}
   </style>
 </head>
@@ -43,6 +43,8 @@
   <header>
     <div class="brand">Zyada <span style="color:#16a34a">زيادة</span></div>
     <div class="actions">
+      <a class="btn" href="my.html">My reservation</a>
+      <a class="btn" href="partner.html">Partner redeem</a>
       <button class="btn" id="ping">Ping API</button>
     </div>
   </header>
@@ -75,7 +77,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
   (function(){
-    const API_URL = "https://script.google.com/macros/s/AKfycbzNeNuyhUNhrd3QY0b3Vt8ktgBgZTkAsx74hQTXIoNNcmCQ8TNSOaMr4v20-KRbVSOlwg/exec";
+    const API_URL = "https://script.google.com/macros/s/AKfycbwEQp1C6ff3ll53F8sw2TpTw171jB_iL2YW7iI5LrOQragU21d1AZxogoSZ8NDfKIXSfw/exec";
 
     // helpers
     const $ = s => document.querySelector(s);
@@ -83,11 +85,13 @@
     const esc = s => String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     const timeLabel = (v)=>{
       if(!v) return '';
-      // Your Pickups look like "1899-12-30T15:54:51.000Z" -> treat as time only
-      const d = new Date(v);
-      if(isNaN(d.getTime())) return String(v);
+      const d = new Date(v); if(isNaN(d)) return String(v);
       return d.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'});
     };
+
+    // lazy expiry: run once on load, then every 5 min
+    fetch(API_URL + '?route=expire', { cache: 'no-store' }).catch(()=>{});
+    setInterval(()=>{ fetch(API_URL + '?route=expire', { cache:'no-store' }).catch(()=>{}); }, 5*60*1000);
 
     // ping
     $('#ping').addEventListener('click', async () => {
@@ -180,44 +184,42 @@
 
       // wire reserve buttons (cards + popups)
       document.querySelectorAll('.reserve').forEach(btn=>{
-        btn.addEventListener('click', ev => {
+        btn.addEventListener('click', async ev => {
           const id = ev.currentTarget.getAttribute('data-offer-id') || '';
           if (!id) return alert('Offer unavailable');
-          reserveFlow(id);
+          const name = prompt('Your name (for pickup):','') || '';
+          if (!name.trim()) return alert('Please enter your name');
+          const phone = prompt('Mobile (optional):','') || '';
+          const payload = { offerId:id, customerName:name.trim(), customerPhone:phone.trim() };
+
+          // ensure expiry just before reserving
+          await fetch(API_URL + '?route=expire', { cache:'no-store' }).catch(()=>{});
+
+          try{
+            const res = await fetch(API_URL + '?route=reserve', {
+              method:'POST',
+              headers:{ 'Content-Type':'text/plain;charset=utf-8' },
+              body: JSON.stringify(payload)
+            });
+            const out = await res.json();
+            if (!out.ok){
+              if (out.reason === 'sold_out') return alert('Sorry, this offer just sold out.');
+              return alert('Could not reserve: ' + (out.reason || 'unknown'));
+            }
+            alert('Reserved! Pickup code: ' + out.PickupCode + '\n(Show this code at pickup.)');
+            fetchMetrics(); // update stats
+            fetchOffers();  // refresh cards/qty
+          }catch(e){
+            alert('Network error while reserving.');
+          }
         });
       });
     }
 
-    async function reserveFlow(offerId){
-      if (!offerId) return alert('Offer unavailable');
-      const name = prompt('Your name (for pickup):','') || '';
-      if (!name.trim()) return alert('Please enter your name');
-      const phone = prompt('Mobile (optional):','') || '';
-      const payload = { offerId, customerName: name.trim(), customerPhone: phone.trim() };
-
-      try{
-        const res = await fetch(API_URL + '?route=reserve', {
-          method:'POST',
-          headers:{ 'Content-Type':'text/plain;charset=utf-8' },
-          body: JSON.stringify(payload)
-        });
-        const out = await res.json();
-        if (!out.ok){
-          if (out.reason === 'sold_out') return alert('Sorry, this offer just sold out.');
-          return alert('Could not reserve: ' + (out.reason || 'unknown'));
-        }
-        alert('Reserved! Pickup code: ' + out.PickupCode + '\n(Show this code at pickup.)');
-        fetchMetrics(); // update stats
-      }catch(e){
-        alert('Network error while reserving.');
-      }
-    }
-
     // init
     window.addEventListener('DOMContentLoaded', ()=>{
-      // search filter
       const q = $('#q'); if (q) q.addEventListener('input', e => { filters.q = e.target.value; render(); });
-      const useLoc = document.getElementById('useLocation');
+      const useLoc = $('#useLocation');
       if (useLoc) useLoc.addEventListener('click', ()=>{
         if (!navigator.geolocation) return alert('Geolocation not supported');
         navigator.geolocation.getCurrentPosition(pos=>{
@@ -225,22 +227,9 @@
         }, ()=>alert('Could not get your location'));
       });
 
-      <script>
-// 1) Fire-and-forget expiry once on load
-fetch(API_URL + '?route=expire', { cache: 'no-store' }).catch(()=>{});
-
-// ... your existing init calls:
-initMap();
-fetchMetrics();
-fetchOffers();
-
-// 2) (Optional) Refresh expiry every 5 minutes while user stays on the page
-setInterval(() => {
-  fetch(API_URL + '?route=expire', { cache: 'no-store' }).catch(()=>{});
-}, 5 * 60 * 1000);
-</script>
-
-      
+      initMap();
+      fetchMetrics();
+      fetchOffers();
     });
   })();
   </script>
