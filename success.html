@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Zyada — Offers + Reserve (Debug Friendly)</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    body { font-family: system-ui, Inter, Arial; margin:0 }
+    header { padding:12px 16px; border-bottom:1px solid #e2e8f0; display:flex; gap:10px; align-items:center; justify-content:space-between }
+    .btn { padding:10px 14px; border-radius:12px; border:1px solid #e2e8f0; background:#fff; cursor:pointer; font-weight:700 }
+    .btn.primary { background:#22c55e; color:#fff; border-color:#22c55e }
+    .wrap { max-width:1100px; margin:0 auto; padding:16px }
+    .grid { display:grid; gap:16px }
+    @media(min-width:960px){ .two { grid-template-columns:1.1fr .9fr } }
+    .card { border:1px solid #e2e8f0; border-radius:16px; padding:16px }
+    .offers { display:grid; gap:10px; max-height:520px; overflow:auto }
+    .offer { display:grid; grid-template-columns:92px 1fr auto; gap:12px; border:1px solid #e2e8f0; border-radius:14px; padding:10px }
+    .thumb { width:92px; height:92px; border-radius:12px; background-size:cover; background-position:center; border:1px solid #e2e8f0 }
+    .meta { color:#64748b; font-size:12px }
+    .price { display:flex; gap:8px; align-items:center; margin-top:4px }
+    .now { color:#047857; font-weight:900 }
+    .was { text-decoration:line-through; color:#94a3b8; font-size:12px }
+    .map { height:520px; border:1px solid #e2e8f0; border-radius:16px; overflow:hidden }
+    #map { height:100% }
+    @media(max-width:560px){ .offer { grid-template-columns:80px 1fr } .offer .reserve { grid-column:1/-1 } }
+    .note { font-size:12px; color:#64748b }
+    .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center }
+    input[type=text] { padding:10px 12px; border:1px solid #e2e8f0; border-radius:10px; min-width:220px }
+    .count { font-size:12px; color:#475569 }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="row">
+      <strong>Zyada</strong>
+      <span class="count" id="count"></span>
+    </div>
+    <div class="row">
+      <button class="btn" id="ping">Ping API</button>
+    </div>
+  </header>
+
+  <main class="wrap grid two">
+    <section class="card">
+      <div class="row">
+        <input id="quickId" type="text" placeholder="Quick Reserve by OfferId (e.g. OID-000003)" />
+        <button class="btn primary" id="quickBtn">Reserve by ID</button>
+      </div>
+      <div class="map" style="margin-top:10px"><div id="map"></div></div>
+    </section>
+    <aside class="offers" id="offersList"></aside>
+  </main>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const API_URL = 'https://script.google.com/macros/s/AKfycbw4_sp92HSjDtfxi0s5xbszhYTx_msSG3CsSi1wuAR9woak4f5pHLIfVJV30EsHgfU6UQ/exec';
+
+    document.getElementById('ping').addEventListener('click', async () => {
+      const res = await fetch(API_URL + '?route=health', { cache:'no-store' });
+      const j = await res.json();
+      console.log('Health:', j);
+      alert('Health: ' + JSON.stringify(j));
+    });
+
+    document.getElementById('quickBtn').addEventListener('click', async () => {
+      const id = document.getElementById('quickId').value.trim();
+      if (!id) return alert('Enter an OfferId');
+      await openReserve(id);
+    });
+
+    let map, markers, OFFERS = [];
+
+    function init() {
+      map = L.map('map').setView([25.2048, 55.2708], 11);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+      markers = L.layerGroup().addTo(map);
+      fetchOffers();
+    }
+
+    async function fetchOffers() {
+      try {
+        const res = await fetch(API_URL + '?route=offers', { cache:'no-store' });
+        const data = await res.json();
+        console.log('Offers:', data);
+        OFFERS = Array.isArray(data) ? data : [];
+        document.getElementById('count').textContent = OFFERS.length ? (OFFERS.length + ' offers') : '0 offers';
+        render();
+      } catch (e) {
+        console.error('Offers fetch failed', e);
+        document.getElementById('offersList').innerHTML = '<div class="note">Could not load offers.</div>';
+      }
+    }
+
+    function render() {
+      markers.clearLayers();
+      const list = document.getElementById('offersList');
+      list.innerHTML = '';
+      if (!OFFERS.length) {
+        list.innerHTML = '<div class="note">No offers feed returned. Use "Quick Reserve by OfferId" to test.</div>';
+        return;
+      }
+      const bounds = [];
+      OFFERS.forEach(o => {
+        const img = o.ImageUrl || 'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?q=80&w=600&auto=format&fit=crop';
+        const card = document.createElement('div'); card.className = 'offer';
+        card.innerHTML = `
+          <div class="thumb" style="background-image:url('${img}')"></div>
+          <div>
+            <div style="font-weight:900">${escapeHtml(o.ItemName||'Item')}</div>
+            <div class="meta">${escapeHtml(o.PartnerName||'Partner')} • ${escapeHtml(o.Cuisine||'')}</div>
+            <div class="price"><span class="now">AED ${fmt(o.PriceAfter||0)}</span> ${(o.PriceBefore?`<span class="was">AED ${fmt(o.PriceBefore)}</span>`:'')}</div>
+            <div class="meta">Pickup ${escapeHtml(o.PickupStart||'')}–${escapeHtml(o.PickupEnd||'')}</div>
+          </div>
+          <button class="btn primary reserve" data-offer-id="${escapeHtml(o.OfferId||'')}">Reserve</button>
+        `;
+        list.appendChild(card);
+
+        if (o.Lat && o.Lng) {
+          const m = L.marker([Number(o.Lat), Number(o.Lng)]).addTo(markers);
+          m.bindPopup(`<b>${escapeHtml(o.ItemName||'Item')}</b><br/>AED ${fmt(o.PriceAfter||0)} • ${escapeHtml(o.PartnerName||'')}<br><button class='btn primary reserve' data-offer-id='${escapeHtml(o.OfferId||'')}'>Reserve</button>`);
+          bounds.push([Number(o.Lat), Number(o.Lng)]);
+        }
+      });
+      if (bounds.length) map.fitBounds(bounds, { padding:[30,30] });
+
+      document.querySelectorAll('.reserve').forEach(btn => {
+        btn.addEventListener('click', (ev) => {
+          ev.preventDefault();
+          const id = btn.getAttribute('data-offer-id');
+          openReserve(id);
+        });
+      });
+    }
+
+    async function openReserve(offerId) {
+      if (!offerId) { alert('Offer unavailable'); return; }
+      const customerName = prompt('Your name (for pickup):','');
+      if (customerName === null) return;
+      const customerPhone = prompt('Mobile (optional):','') || '';
+
+      const payload = { offerId, customerName, customerPhone };
+      console.log('POST /reserve payload:', payload);
+      try {
+        const res = await fetch(API_URL + '?route=reserve', {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(payload)
+        });
+        console.log('Response status:', res.status);
+        const out = await res.json();
+        console.log('Reserve response JSON:', out);
+
+        if (!out.ok) {
+          if (out.reason === 'sold_out') { alert('Sorry, this offer just sold out.'); return; }
+          alert('Could not reserve: ' + (out.reason || 'unknown error'));
+          return;
+        }
+        alert('Reserved!\nReservation ID: ' + out.ReservationId + '\nPickup code: ' + out.PickupCode + '\nExpires: ' + out.ExpiresAt);
+      } catch (err) {
+        console.error('Reserve error:', err);
+        alert('Network error. Check console.');
+      }
+    }
+
+    function fmt(n) { return (Math.round((n||0)*100)/100).toLocaleString(); }
+    function escapeHtml(str) { return String(str||'').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s])); }
+
+    init();
+  </script>
+</body>
+</html>
