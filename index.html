@@ -6,7 +6,7 @@
   <title>Zyada — Fresh Surplus, Happy Savings</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
-    :root { --emerald:#22c55e; --border:#e2e8f0; --muted:#64748b; --ink:#0f172a; }
+    :root { --emerald:#22c55e; --border:#e2e8f0; --muted:#64748b; --ink:#0f172a; --chip:#f8fafc; }
     *{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Inter,Arial;color:var(--ink)}
     header{position:sticky;top:0;z-index:10;background:#fff;border-bottom:1px solid var(--border);padding:12px 16px;display:flex;gap:10px;align-items:center;justify-content:space-between}
     .brand{font-weight:900;font-size:18px;display:flex;gap:10px;align-items:center}
@@ -35,7 +35,12 @@
     @media(min-width:720px){.stats{grid-template-columns:repeat(3,1fr)}}
     .stat{border:1px solid var(--border);border-radius:16px;padding:16px;background:#fff;display:flex;align-items:center;gap:12px}
     .stat .icon{font-size:22px}.stat .val{font-size:22px;font-weight:900}.stat .lbl{color:var(--muted);font-size:12px}
-    /* Keep Leaflet below overlays */
+    /* Modal above Leaflet */
+    .overlay{position:fixed;inset:0;background:rgba(15,23,42,.56);display:none;align-items:center;justify-content:center;padding:16px;z-index:10000}
+    .modal{width:100%;max-width:420px;background:#fff;border-radius:16px;border:1px solid var(--border);padding:18px}
+    .modal h3{margin:0 0 8px}
+    .chip{display:inline-flex;align-items:center;gap:6px;border:1px dashed var(--border);padding:8px 10px;border-radius:12px;font-family:ui-monospace,Menlo,monospace;font-weight:700;background:var(--chip)}
+    .copy{margin-left:8px;font-size:12px;color:#111827;border:1px solid var(--border);padding:6px 8px;border-radius:8px;background:#f8fafc;cursor:pointer}
     .leaflet-container,.leaflet-pane,.leaflet-top,.leaflet-bottom{z-index:0!important}
   </style>
 </head>
@@ -73,7 +78,23 @@
     </section>
   </main>
 
-  <!-- Scripts -->
+  <!-- Success modal -->
+  <div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal">
+      <h3 id="modalTitle">Reservation confirmed 🎉</h3>
+      <div class="meta" id="modalSubtitle">Show this at pickup within <span id="modalExpiry"></span>.</div>
+      <div style="margin:12px 0">
+        <div class="chip">Pickup code: <span id="modalCode">—</span></div>
+        <button class="copy" id="copyCode">Copy</button>
+      </div>
+      <div id="modalDetails" class="note"></div>
+      <div style="display:flex; gap:8px; margin-top:12px">
+        <button class="btn" id="closeModal">Close</button>
+        <a class="btn primary" id="viewMyRes" href="my.html">Open My reservation</a>
+      </div>
+    </div>
+  </div>
+
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
   (function(){
@@ -83,11 +104,7 @@
     const $ = s => document.querySelector(s);
     const fmt = n => (Math.round(Number(n||0)*100)/100).toLocaleString();
     const esc = s => String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-    const timeLabel = (v)=>{
-      if(!v) return '';
-      const d = new Date(v); if(isNaN(d)) return String(v);
-      return d.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'});
-    };
+    const timeLabel = (v)=>{ if(!v) return ''; const d = new Date(v); return isNaN(d)? String(v) : d.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'}); };
 
     // lazy expiry: run once on load, then every 5 min
     fetch(API_URL + '?route=expire', { cache: 'no-store' }).catch(()=>{});
@@ -125,12 +142,10 @@
       try{
         const r = await fetch(API_URL + '?route=offers', { cache:'no-store' });
         const data = await r.json();
-        console.log('OFFERS JSON:', data);
         OFFERS = Array.isArray(data) ? data : [];
         const count = $('#offersCount'); if (count) count.textContent = 'Loaded ' + OFFERS.length + ' offer(s)';
         render();
       }catch(e){
-        console.error('Offers fetch failed:', e);
         $('#offersList').innerHTML = '<div class="note">Could not load offers.</div>';
       }
     }
@@ -206,7 +221,18 @@
               if (out.reason === 'sold_out') return alert('Sorry, this offer just sold out.');
               return alert('Could not reserve: ' + (out.reason || 'unknown'));
             }
-            alert('Reserved! Pickup code: ' + out.PickupCode + '\n(Show this code at pickup.)');
+            // show modal
+            $('#modalCode').textContent = out.PickupCode || '—';
+            $('#modalExpiry').textContent = out.ExpiresAt || '';
+            $('#modalDetails').textContent = 'Saved under: ' + (name || '—') + (phone ? (' • ' + phone) : '');
+            $('#overlay').style.display = 'flex';
+
+            // copy button
+            $('#copyCode').onclick = () => { navigator.clipboard.writeText(out.PickupCode||''); };
+
+            // close modal
+            $('#closeModal').onclick = () => { $('#overlay').style.display = 'none'; };
+
             fetchMetrics(); // update stats
             fetchOffers();  // refresh cards/qty
           }catch(e){
