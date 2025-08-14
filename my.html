@@ -34,11 +34,12 @@
         <button id="byCode" class="btn">Find by code</button>
       </div>
       <div class="row" style="margin-bottom:8px">
-        <input id="phone" class="input" placeholder="Enter phone (optional)" />
+        <input id="phone" class="input" placeholder="Enter phone (e.g., 05xxxx or +9715…)" />
         <button id="byPhone" class="btn">Find by phone</button>
+        <button id="ping" class="btn">Ping API</button>
       </div>
       <div id="out" style="margin-top:10px"></div>
-      <div class="note" style="margin-top:8px">Tip: Use the code shown after you reserve on the homepage.</div>
+      <div class="note" style="margin-top:8px">Tip: Use the code you saw after reserving on the homepage.</div>
     </div>
   </div>
 
@@ -48,7 +49,7 @@
     // Lazy expiry on load
     fetch(API_URL + '?route=expire', { cache: 'no-store' }).catch(()=>{});
 
-    function esc(s){ return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]); }
+    const esc = s => String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
     async function lookup(params){
       const url = API_URL + '?route=reservation&' + new URLSearchParams(params).toString();
@@ -77,16 +78,59 @@
         (obj.ExpiresAt?'<div class="note">ExpiresAt: '+esc(obj.ExpiresAt)+'</div>':'');
     }
 
+    // Phone normalization for UAE formats
+    function normalizePhones(input){
+      const digits = (input||'').replace(/\D+/g,'');
+      const variants = new Set();
+
+      if (!digits) return [];
+
+      // As typed
+      variants.add(digits);
+
+      // If starts with 9715..., add 05...
+      if (digits.startsWith('9715')) variants.add('0' + digits.slice(2)); // 9715xxxx -> 05xxxx
+
+      // If starts with 05..., add 9715...
+      if (digits.startsWith('05')) variants.add('971' + digits.slice(1));
+
+      return Array.from(variants);
+    }
+
+    document.getElementById('ping').addEventListener('click', async ()=>{
+      try { const r = await fetch(API_URL + '?route=health'); alert(await r.text()); } catch { alert('Ping failed'); }
+    });
+
     document.getElementById('byCode').addEventListener('click', async ()=>{
       const code = (document.getElementById('code').value||'').trim();
-      if (!code) { alert('Enter code'); return; }
-      try { renderReservation(await lookup({ code })); } catch { document.getElementById('out').innerHTML = '<div class="err">Network error</div>'; }
+      const out = document.getElementById('out');
+      if (!code) { out.innerHTML = '<div class="err">Enter code</div>'; return; }
+      try {
+        const obj = await lookup({ code });
+        renderReservation(obj);
+      } catch (e) {
+        out.innerHTML = '<div class="err">Network error</div>';
+      }
     });
 
     document.getElementById('byPhone').addEventListener('click', async ()=>{
       const phone = (document.getElementById('phone').value||'').trim();
-      if (!phone) { alert('Enter phone'); return; }
-      try { renderReservation(await lookup({ phone })); } catch { document.getElementById('out').innerHTML = '<div class="err">Network error</div>'; }
+      const out = document.getElementById('out');
+      if (!phone) { out.innerHTML = '<div class="err">Enter phone</div>'; return; }
+      try {
+        // try raw, then normalized variants
+        let obj = await lookup({ phone });
+        if (obj && !obj.error) return renderReservation(obj);
+
+        const variants = normalizePhones(phone);
+        for (const v of variants) {
+          obj = await lookup({ phone: v });
+          if (obj && !obj.error) return renderReservation(obj);
+        }
+        out.innerHTML = '<div class="err">Not found</div>';
+      } catch (e) {
+        out.innerHTML = '<div class="err">Network error</div>';
+      }
     });
   </script>
 </body>
