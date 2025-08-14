@@ -6,18 +6,14 @@
   <title>Zyada — Fresh Surplus, Happy Savings</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
-    :root {
-      --emerald:#22c55e; --border:#e2e8f0; --muted:#64748b; --ink:#0f172a; --chip:#f8fafc;
-    }
-    *{box-sizing:border-box}
-    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Inter,Arial;color:var(--ink);background:#fff}
+    :root { --emerald:#22c55e; --border:#e2e8f0; --muted:#64748b; --ink:#0f172a; }
+    *{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Inter,Arial;color:var(--ink)}
     header{position:sticky;top:0;z-index:10;background:#fff;border-bottom:1px solid var(--border);padding:12px 16px;display:flex;gap:10px;align-items:center;justify-content:space-between}
     .brand{font-weight:900;font-size:18px;display:flex;gap:10px;align-items:center}
     .btn{border:1px solid var(--border);padding:10px 14px;border-radius:12px;background:#fff;cursor:pointer;font-weight:700}
     .btn.primary{background:var(--emerald);border-color:var(--emerald);color:#fff}
     .wrap{max-width:1100px;margin:0 auto;padding:16px}
-    .grid{display:grid;gap:16px}
-    @media(min-width:960px){.two{grid-template-columns:1.1fr .9fr}}
+    .grid{display:grid;gap:16px} @media(min-width:960px){.two{grid-template-columns:1.1fr .9fr}}
     .card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:16px}
     .filters{display:flex;gap:8px;flex-wrap:wrap}
     .input{padding:12px;border-radius:12px;border:1px solid var(--border)}
@@ -38,10 +34,8 @@
     .stats{display:grid;gap:12px;grid-template-columns:1fr;margin-bottom:12px}
     @media(min-width:720px){.stats{grid-template-columns:repeat(3,1fr)}}
     .stat{border:1px solid var(--border);border-radius:16px;padding:16px;background:#fff;display:flex;align-items:center;gap:12px}
-    .stat .icon{font-size:22px}
-    .stat .val{font-size:22px;font-weight:900}
-    .stat .lbl{color:var(--muted);font-size:12px}
-    /* Make Leaflet sit below anything overlaying */
+    .stat .icon{font-size:22px}.stat .val{font-size:22px;font-weight:900}.stat .lbl{color:var(--muted);font-size:12px}
+    /* Leaflet below overlays */
     .leaflet-container,.leaflet-pane,.leaflet-top,.leaflet-bottom{z-index:0!important}
   </style>
 </head>
@@ -56,27 +50,9 @@
   <main class="wrap">
     <!-- Impact stats -->
     <section class="stats">
-      <div class="stat">
-        <div class="icon">🥗</div>
-        <div>
-          <div class="val" id="stMeals">0</div>
-          <div class="lbl">Meals rescued</div>
-        </div>
-      </div>
-      <div class="stat">
-        <div class="icon">🌱</div>
-        <div>
-          <div class="val" id="stCO2">0</div>
-          <div class="lbl">CO₂ saved (kg)</div>
-        </div>
-      </div>
-      <div class="stat">
-        <div class="icon">💰</div>
-        <div>
-          <div class="val" id="stAED">0</div>
-          <div class="lbl">AED saved</div>
-        </div>
-      </div>
+      <div class="stat"><div class="icon">🥗</div><div><div class="val" id="stMeals">0</div><div class="lbl">Meals rescued</div></div></div>
+      <div class="stat"><div class="icon">🌱</div><div><div class="val" id="stCO2">0</div><div class="lbl">CO₂ saved (kg)</div></div></div>
+      <div class="stat"><div class="icon">💰</div><div><div class="val" id="stAED">0</div><div class="lbl">AED saved</div></div></div>
     </section>
 
     <section class="grid two">
@@ -98,15 +74,23 @@
   <!-- Scripts -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
+  (function(){
     const API_URL = "https://script.google.com/macros/s/AKfycbzNeNuyhUNhrd3QY0b3Vt8ktgBgZTkAsx74hQTXIoNNcmCQ8TNSOaMr4v20-KRbVSOlwg/exec";
 
     // helpers
-    const $ = sel => document.querySelector(sel);
-    function fmt(n){ n=Number(n||0); return (Math.round(n*100)/100).toLocaleString(); }
-    function esc(s){ return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]); }
+    const $ = s => document.querySelector(s);
+    const fmt = n => (Math.round(Number(n||0)*100)/100).toLocaleString();
+    const esc = s => String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    const timeLabel = (v)=>{
+      if(!v) return '';
+      // Your Pickups look like "1899-12-30T15:54:51.000Z" -> treat as time only
+      const d = new Date(v);
+      if(isNaN(d.getTime())) return String(v);
+      return d.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'});
+    };
 
     // ping
-    document.getElementById('ping').addEventListener('click', async () => {
+    $('#ping').addEventListener('click', async () => {
       try { const r = await fetch(API_URL + '?route=health', { cache:'no-store' }); alert(await r.text()); }
       catch { alert('API health failed'); }
     });
@@ -117,8 +101,8 @@
         const r = await fetch(API_URL + '?route=metrics', { cache:'no-store' });
         const m = await r.json();
         $('#stMeals').textContent = (m.meals||0).toLocaleString();
-        $('#stCO2'  ).textContent = (m.kgCO2e||0).toLocaleString();
-        $('#stAED'  ).textContent = (m.aedSaved||0).toLocaleString();
+        $('#stCO2').textContent   = (m.kgCO2e||0).toLocaleString();
+        $('#stAED').textContent   = (m.aedSaved||0).toLocaleString();
       }catch{}
     }
 
@@ -130,7 +114,7 @@
       markers = L.layerGroup().addTo(map);
     }
 
-    // offers
+    // offers + render
     let OFFERS = []; let filters = { q:'' };
 
     async function fetchOffers(){
@@ -139,12 +123,11 @@
         const data = await r.json();
         console.log('OFFERS JSON:', data);
         OFFERS = Array.isArray(data) ? data : [];
-        const count = document.getElementById('offersCount');
-        if (count) count.textContent = 'Loaded ' + OFFERS.length + ' offer(s)';
+        const count = $('#offersCount'); if (count) count.textContent = 'Loaded ' + OFFERS.length + ' offer(s)';
         render();
       }catch(e){
         console.error('Offers fetch failed:', e);
-        document.getElementById('offersList').innerHTML = '<div class="note">Could not load offers.</div>';
+        $('#offersList').innerHTML = '<div class="note">Could not load offers.</div>';
       }
     }
 
@@ -157,16 +140,17 @@
 
     function render(){
       if (markers && markers.clearLayers) markers.clearLayers();
-      const list = document.getElementById('offersList'); list.innerHTML = '';
+      const list = $('#offersList'); list.innerHTML = '';
       const filtered = (OFFERS||[]).filter(matches);
       if (!filtered.length){ list.innerHTML = '<div class="note">No offers yet.</div>'; return; }
 
       const bounds = [];
-      filtered.forEach(o => {
-        const img  = (o.ImageUrl||'').trim() || 'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?q=80&w=600&auto=format&fit=crop';
+      filtered.forEach(o=>{
+        const img  = (o.ImageUrl||'').trim() || 'https://images.unsplash.com/photo-1546069901-eacef0df6022';
         const qty  = Number(o.Qty||0);
         const sold = qty <= 0;
         const offerId = o.OfferId || '';
+        const pickup = (o.PickupStart && o.PickupEnd) ? `Pickup ${timeLabel(o.PickupStart)}–${timeLabel(o.PickupEnd)}` : '';
 
         // card
         const card = document.createElement('div'); card.className = 'offer'; card.dataset.offerId = offerId;
@@ -174,9 +158,9 @@
           '<div class="thumb" style="background-image:url(\''+img.replace(/'/g,"\\'")+'\')"></div>'+
           '<div>'+
             '<strong>'+esc(o.ItemName||'')+'</strong>'+
-            '<div class="meta">'+esc(o.PartnerName||'')+(o.Cuisine?(' • '+esc(o.Cuisine)):'')+'</div>'+
+            '<div class="meta">'+esc(o.PartnerName||o.OutletName||'')+(o.Cuisine?(' • '+esc(o.Cuisine)):'')+'</div>'+
             '<div class="price"><span class="now">AED '+fmt(o.PriceAfter)+'</span>'+(o.PriceBefore?('<span class="was">AED '+fmt(o.PriceBefore)+'</span>'):'')+'</div>'+
-            '<div class="meta">'+(o.PickupStart&&o.PickupEnd?('Pickup '+esc(o.PickupStart)+'–'+esc(o.PickupEnd)):'')+'</div>'+
+            '<div class="meta">'+pickup+'</div>'+
           '</div>'+
           '<button class="btn primary reserve" data-offer-id="'+esc(offerId)+'" '+(sold?'disabled':'')+'>'+(sold?'Sold out':'Reserve')+'</button>'+
           '<div class="qtybadge '+(sold?'soldout':'')+'">'+(sold?'Sold out':('Qty '+qty))+'</div>';
@@ -186,7 +170,7 @@
         const lat = Number(o.Lat), lng = Number(o.Lng);
         if (!isNaN(lat) && !isNaN(lng)){
           const m = L.marker([lat,lng]).addTo(markers);
-          m.bindPopup('<b>'+esc(o.ItemName||'')+'</b><br/>AED '+fmt(o.PriceAfter||0)+' • '+esc(o.PartnerName||'')+
+          m.bindPopup('<b>'+esc(o.ItemName||'')+'</b><br/>AED '+fmt(o.PriceAfter||0)+' • '+esc(o.PartnerName||o.OutletName||'')+
                       '<br><button class="btn primary reserve" data-offer-id="'+esc(offerId)+'" '+(sold?'disabled':'')+'>'+(sold?'Sold out':'Reserve')+'</button>');
           bounds.push([lat,lng]);
         }
@@ -230,19 +214,22 @@
     }
 
     // init
-    initMap();
-    fetchMetrics();
-    fetchOffers();
-    document.getElementById('q').addEventListener('input', e => { filters.q = e.target.value; render(); });
+    window.addEventListener('DOMContentLoaded', ()=>{
+      // search filter
+      const q = $('#q'); if (q) q.addEventListener('input', e => { filters.q = e.target.value; render(); });
+      const useLoc = document.getElementById('useLocation');
+      if (useLoc) useLoc.addEventListener('click', ()=>{
+        if (!navigator.geolocation) return alert('Geolocation not supported');
+        navigator.geolocation.getCurrentPosition(pos=>{
+          const {latitude, longitude} = pos.coords; map.setView([latitude, longitude], 13);
+        }, ()=>alert('Could not get your location'));
+      });
 
-    // optional: center map on user
-    document.getElementById('useLocation').addEventListener('click', ()=>{
-      if (!navigator.geolocation) return alert('Geolocation not supported');
-      navigator.geolocation.getCurrentPosition(pos=>{
-        const {latitude, longitude} = pos.coords;
-        map.setView([latitude, longitude], 13);
-      }, ()=>alert('Could not get your location'));
+      initMap();
+      fetchMetrics();
+      fetchOffers();
     });
+  })();
   </script>
 </body>
 </html>
