@@ -56,6 +56,13 @@ function esc(s){ return String(s||'').replace(/[&<>"']/g, m=>({'&':'&amp;','<':'
 function fmt(n){ return (Number(n)||0).toFixed(2); }
 function toast(msg){ const t=$('#toast'); t.textContent=msg; t.style.display='block'; setTimeout(()=>t.style.display='none',2500); }
 
+// Quick debug area
+const dbg = document.createElement('pre');
+dbg.style.cssText = 'white-space:pre-wrap; font-size:12px; background:#fff; border:1px solid #e5e7eb; padding:8px; margin:8px 16px; border-radius:8px;';
+dbg.id = 'debug';
+dbg.textContent = 'Debug: pending…';
+document.body.appendChild(dbg);
+
 // Map
 const map = L.map('map').setView([25.20, 55.27], 11);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(map);
@@ -65,17 +72,38 @@ let OFFERS = [];
 
 async function loadMetrics(){
   try {
-    const res = await fetch(API_URL + '?route=metrics'); const m = await res.json();
-    if (m && typeof m === 'object') {
-      $('#stats').textContent = `Meals saved: ${m.meals||0} • CO₂e avoided: ${m.kgCO2e||0} kg • AED saved: ${m.aedSaved||0}`;
-    }
-  } catch {}
+    const res = await fetch(API_URL + '?route=metrics');
+    const m = await res.json();
+    $('#stats').textContent = `Meals saved: ${m.meals||0} • CO₂e avoided: ${m.kgCO2e||0} kg • AED saved: ${m.aedSaved||0}`;
+  } catch (e) {
+    $('#stats').textContent = '—';
+  }
 }
+
 async function loadOffers(){
-  const res = await fetch(API_URL + '?route=offers');
-  OFFERS = await res.json();
+  let raw, parsed;
+  try {
+    const res = await fetch(API_URL + '?route=offers');
+    raw = await res.text(); // read as text first (so we can show it)
+    try { parsed = JSON.parse(raw); } catch(e){ parsed = { parse_error: String(e), raw }; }
+  } catch (err) {
+    dbg.textContent = 'Debug fetch error: ' + String(err);
+    $('#offersList').innerHTML = '<div class="meta">Network error loading offers.</div>';
+    return;
+  }
+
+  // Show exactly what the API returned
+  dbg.textContent = 'GET ' + API_URL + '?route=offers\n\n' + (typeof raw === 'string' ? raw : JSON.stringify(parsed,null,2));
+
+  OFFERS = Array.isArray(parsed) ? parsed : [];
+  if (!OFFERS.length && parsed && parsed.error) {
+    // If backend sent an error object, surface it to the UI too
+    $('#offersList').innerHTML = '<div class="meta">API error: ' + esc(parsed.error) + '</div>';
+    return;
+  }
   render();
 }
+
 function render(){
   markers.clearLayers();
   const list = $('#offersList'); list.innerHTML='';
@@ -101,7 +129,7 @@ function render(){
         <div><button class="btn pay" ${sold?'disabled':''} data-offer="${esc(o.OfferId||'')}">Pay & Reserve</button></div>
       </div>`;
     list.appendChild(div);
-    if (!isNaN(o.Lat) && !isNaN(o.Lng)) {
+    if (!isNaN(Number(o.Lat)) && !isNaN(Number(o.Lng))) {
       const m = L.marker([Number(o.Lat), Number(o.Lng)]).addTo(markers);
       m.bindPopup(`<b>${esc(o.ItemName||'')}</b><br>AED ${fmt(o.PriceAfter||0)}<br>${sold?'Sold out':'Available'}`);
       bounds.push([Number(o.Lat), Number(o.Lng)]);
@@ -121,30 +149,23 @@ async function startCheckout(offerId){
   const payload = { offerId, customerName:name.trim(), customerPhone:phone.trim() };
 
   try{
-    // Try Stripe first
     const resp = await fetch(API_URL + '?route=start_checkout', {
       method:'POST',
       headers:{ 'Content-Type':'text/plain;charset=utf-8' },
       body: JSON.stringify(payload)
     });
     const out = await resp.json();
-    if (out && out.ok && out.url){
-      window.location.href = out.url; // Go to Stripe Checkout
-      return;
-    }
-    // Fallback to legacy reserve (no payment)
+    if (out && out.ok && out.url){ window.location.href = out.url; return; }
+
+    // Fallback: legacy reserve
     const res2 = await fetch(API_URL + '?route=reserve', {
       method:'POST',
       headers:{ 'Content-Type':'text/plain;charset=utf-8' },
       body: JSON.stringify(payload)
     });
     const out2 = await res2.json();
-    if (out2.ok){
-      alert('Reserved! Your pickup code: ' + out2.PickupCode);
-      loadOffers();
-    } else {
-      alert('Could not reserve: ' + (out2.reason||'unknown'));
-    }
+    if (out2.ok){ alert('Reserved! Your pickup code: ' + out2.PickupCode); loadOffers(); }
+    else { alert('Could not reserve: ' + (out2.reason||'unknown')); }
   }catch(err){
     console.error(err);
     toast('Network error');
@@ -154,5 +175,6 @@ async function startCheckout(offerId){
 loadMetrics();
 loadOffers();
 </script>
+
 </body>
 </html>
