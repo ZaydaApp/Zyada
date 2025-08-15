@@ -49,7 +49,7 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-const API_URL = https://script.google.com/macros/s/AKfycbwe5z-2jVkydKHN5fAKWHSx-wGdH8MF1_FTW4NtcpR7/dev; // <-- replace with your /dev URL
+const API_URL = 'https://script.google.com/macros/s/AKfycbwe5z-2jVkydKHN5fAKWHSx-wGdH8MF1_FTW4NtcpR7/dev'; // your /dev URL
 
 function $(q){ return document.querySelector(q); }
 function esc(s){ return String(s||'').replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]); }
@@ -64,10 +64,12 @@ const markers = L.layerGroup().addTo(map);
 let OFFERS = [];
 
 async function loadMetrics(){
-  const res = await fetch(API_URL + '?route=metrics'); const m = await res.json();
-  if (m && typeof m === 'object') {
-    $('#stats').textContent = `Meals saved: ${m.meals||0} • CO₂e avoided: ${m.kgCO2e||0} kg • AED saved: ${m.aedSaved||0}`;
-  }
+  try {
+    const res = await fetch(API_URL + '?route=metrics'); const m = await res.json();
+    if (m && typeof m === 'object') {
+      $('#stats').textContent = `Meals saved: ${m.meals||0} • CO₂e avoided: ${m.kgCO2e||0} kg • AED saved: ${m.aedSaved||0}`;
+    }
+  } catch {}
 }
 async function loadOffers(){
   const res = await fetch(API_URL + '?route=offers');
@@ -127,11 +129,10 @@ async function startCheckout(offerId){
     });
     const out = await resp.json();
     if (out && out.ok && out.url){
-      // send user to Stripe
-      window.location.href = out.url;
+      window.location.href = out.url; // Go to Stripe Checkout
       return;
     }
-    // fallback to legacy reserve
+    // Fallback to legacy reserve (no payment)
     const res2 = await fetch(API_URL + '?route=reserve', {
       method:'POST',
       headers:{ 'Content-Type':'text/plain;charset=utf-8' },
