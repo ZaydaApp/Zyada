@@ -52,20 +52,30 @@ function $(q){ return document.querySelector(q); }
 function esc(s){ return String(s||'').replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]); }
 function fmt(n){ return (Number(n)||0).toFixed(2); }
 
-// Map init
+// Debug box
+const dbg = document.createElement('pre');
+dbg.id = 'zyada-debug';
+dbg.style.cssText = 'white-space:pre-wrap;font-size:12px;background:#fff;border:1px solid #e5e7eb;padding:8px;margin:8px 16px;border-radius:8px;';
+dbg.textContent = 'Debug: loading offers…';
+document.body.appendChild(dbg);
+
+// Map
 const map = L.map('map').setView([25.20, 55.27], 11);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(map);
 const markers = L.layerGroup().addTo(map);
 
 let OFFERS = [];
+
 function render(){
   markers.clearLayers();
-  const list = $('#offersList'); list.innerHTML='';
+  const list = document.getElementById('offersList'); list.innerHTML='';
   const bounds = [];
-  if (!Array.isArray(OFFERS) || !OFFERS.length){ list.innerHTML='<div class="meta">No offers yet.</div>'; return; }
+  if (!Array.isArray(OFFERS) || !OFFERS.length){
+    list.innerHTML = '<div class="meta">No offers yet.</div>';
+    return;
+  }
   OFFERS.forEach(o=>{
-    const qty = Number(o.Qty||0);
-    const sold = qty<=0;
+    const qty = Number(o.Qty||0), sold = qty<=0;
     const img = o.ImageUrl || 'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?q=80&w=600&auto=format&fit=crop';
     const div = document.createElement('div');
     div.className='offer';
@@ -93,23 +103,34 @@ function render(){
 }
 
 // JSONP callback
-function initOffers(data){ OFFERS = Array.isArray(data)? data : []; render(); }
+function initOffers(data){
+  OFFERS = Array.isArray(data) ? data : [];
+  dbg.textContent = 'Offers loaded: ' + OFFERS.length;
+  render();
+}
 
-// Load offers via JSONP (no CORS)
+// Load via JSONP with cache‑buster and error trap
 (function(){
+  const url = API_URL + '?route=offers_js&cb=initOffers&_ts=' + Date.now();
   const s = document.createElement('script');
-  s.src = API_URL + '?route=offers_js&cb=initOffers';
+  s.src = url;
+  s.onerror = function(){
+    dbg.textContent = 'JSONP load error.\nTried: ' + url + '\nCheck API_URL and that /dev returns offers_js.';
+  };
   document.body.appendChild(s);
 })();
 
-// Begin checkout without fetch (no CORS): redirect to Apps Script
+// Begin checkout (redirect to Apps Script begin)
 function beginCheckout(offerId){
   const name  = prompt('Your name (for pickup):','') || '';
   if (!name.trim()) return;
   const phone = prompt('Mobile (optional):','') || '';
-  const url = API_URL + '?route=begin&offerId=' + encodeURIComponent(offerId) + '&name=' + encodeURIComponent(name.trim()) + '&phone=' + encodeURIComponent(phone.trim());
-  window.location.href = url; // Apps Script will redirect to Stripe, then back to Apps Script success page
+  const url = API_URL + '?route=begin&offerId=' + encodeURIComponent(offerId) +
+              '&name=' + encodeURIComponent(name.trim()) +
+              '&phone=' + encodeURIComponent(phone.trim());
+  location.href = url;
 }
 </script>
+
 </body>
 </html>
