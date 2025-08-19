@@ -28,7 +28,6 @@
   .btn{ appearance:none; border:none; background:var(--brand); color:white; padding:10px 12px; border-radius:10px; cursor:pointer; font-weight:700; }
   .btn[disabled]{ opacity:.5; cursor:not-allowed; }
   @media (max-width:900px){ main{ grid-template-columns:1fr; } #map{ height:320px; } }
-  .toast{ position:fixed; left:50%; transform:translateX(-50%); bottom:16px; background:#111827; color:#fff; padding:10px 14px; border-radius:10px; font-size:14px; z-index:50; display:none;}
 </style>
 </head>
 <body>
@@ -45,65 +44,20 @@
   </div>
 </main>
 
-<div class="toast" id="toast"></div>
-
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-const API_URL = 'https://script.google.com/macros/s/AKfycbxaWvDOAE1Pva5gTnyEk6JBvvkvsAyVQjHtGl-65ejfAB64JJJMpKDJltpxXE7wDTjh2g/exec'; // your /dev URL
+const API_URL = 'PASTE_YOUR_/dev_URL_HERE'; // e.g. https://script.google.com/macros/s/XXXX/dev
 
 function $(q){ return document.querySelector(q); }
 function esc(s){ return String(s||'').replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]); }
 function fmt(n){ return (Number(n)||0).toFixed(2); }
-function toast(msg){ const t=$('#toast'); t.textContent=msg; t.style.display='block'; setTimeout(()=>t.style.display='none',2500); }
 
-// Quick debug area
-const dbg = document.createElement('pre');
-dbg.style.cssText = 'white-space:pre-wrap; font-size:12px; background:#fff; border:1px solid #e5e7eb; padding:8px; margin:8px 16px; border-radius:8px;';
-dbg.id = 'debug';
-dbg.textContent = 'Debug: pending…';
-document.body.appendChild(dbg);
-
-// Map
+// Map init
 const map = L.map('map').setView([25.20, 55.27], 11);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap'}).addTo(map);
 const markers = L.layerGroup().addTo(map);
 
 let OFFERS = [];
-
-async function loadMetrics(){
-  try {
-    const res = await fetch(API_URL + '?route=metrics');
-    const m = await res.json();
-    $('#stats').textContent = `Meals saved: ${m.meals||0} • CO₂e avoided: ${m.kgCO2e||0} kg • AED saved: ${m.aedSaved||0}`;
-  } catch (e) {
-    $('#stats').textContent = '—';
-  }
-}
-
-async function loadOffers(){
-  let raw, parsed;
-  try {
-    const res = await fetch(API_URL + '?route=offers');
-    raw = await res.text(); // read as text first (so we can show it)
-    try { parsed = JSON.parse(raw); } catch(e){ parsed = { parse_error: String(e), raw }; }
-  } catch (err) {
-    dbg.textContent = 'Debug fetch error: ' + String(err);
-    $('#offersList').innerHTML = '<div class="meta">Network error loading offers.</div>';
-    return;
-  }
-
-  // Show exactly what the API returned
-  dbg.textContent = 'GET ' + API_URL + '?route=offers\n\n' + (typeof raw === 'string' ? raw : JSON.stringify(parsed,null,2));
-
-  OFFERS = Array.isArray(parsed) ? parsed : [];
-  if (!OFFERS.length && parsed && parsed.error) {
-    // If backend sent an error object, surface it to the UI too
-    $('#offersList').innerHTML = '<div class="meta">API error: ' + esc(parsed.error) + '</div>';
-    return;
-  }
-  render();
-}
-
 function render(){
   markers.clearLayers();
   const list = $('#offersList'); list.innerHTML='';
@@ -126,7 +80,7 @@ function render(){
           <div class="qtybadge">${sold?'Sold out':'Qty '+qty}</div>
         </div>
         <div class="meta">Pickup ${esc(o.PickupStart||'')}–${esc(o.PickupEnd||'')}</div>
-        <div><button class="btn pay" ${sold?'disabled':''} data-offer="${esc(o.OfferId||'')}">Pay & Reserve</button></div>
+        <div><button class="btn" ${sold?'disabled':''} onclick="beginCheckout('${esc(o.OfferId||'')}')">Pay & Reserve</button></div>
       </div>`;
     list.appendChild(div);
     if (!isNaN(Number(o.Lat)) && !isNaN(Number(o.Lng))) {
@@ -136,46 +90,26 @@ function render(){
     }
   });
   if (bounds.length) map.fitBounds(bounds, { padding:[30,30] });
-
-  document.querySelectorAll('.btn.pay').forEach(btn=>{
-    btn.addEventListener('click', ()=>startCheckout(btn.getAttribute('data-offer')));
-  });
 }
 
-async function startCheckout(offerId){
+// JSONP callback
+function initOffers(data){ OFFERS = Array.isArray(data)? data : []; render(); }
+
+// Load offers via JSONP (no CORS)
+(function(){
+  const s = document.createElement('script');
+  s.src = API_URL + '?route=offers_js&cb=initOffers';
+  document.body.appendChild(s);
+})();
+
+// Begin checkout without fetch (no CORS): redirect to Apps Script
+function beginCheckout(offerId){
   const name  = prompt('Your name (for pickup):','') || '';
-  if (!name.trim()) return toast('Please enter your name');
+  if (!name.trim()) return;
   const phone = prompt('Mobile (optional):','') || '';
-  const payload = { offerId, customerName:name.trim(), customerPhone:phone.trim() };
-
-  try{
-    const resp = await fetch(API_URL + '?route=start_checkout', {
-      method:'POST',
-      headers:{ 'Content-Type':'text/plain;charset=utf-8' },
-      body: JSON.stringify(payload)
-    });
-    const out = await resp.json();
-    if (out && out.ok && out.url){ window.location.href = out.url; return; }
-
-    // Fallback: legacy reserve
-    const res2 = await fetch(API_URL + '?route=reserve', {
-      method:'POST',
-      headers:{ 'Content-Type':'text/plain;charset=utf-8' },
-      body: JSON.stringify(payload)
-    });
-    const out2 = await res2.json();
-    if (out2.ok){ alert('Reserved! Your pickup code: ' + out2.PickupCode); loadOffers(); }
-    else { alert('Could not reserve: ' + (out2.reason||'unknown')); }
-  }catch(err){
-    console.error(err);
-    toast('Network error');
-  }
+  const url = API_URL + '?route=begin&offerId=' + encodeURIComponent(offerId) + '&name=' + encodeURIComponent(name.trim()) + '&phone=' + encodeURIComponent(phone.trim());
+  window.location.href = url; // Apps Script will redirect to Stripe, then back to Apps Script success page
 }
-
-loadMetrics();
-loadOffers();
 </script>
-
-
 </body>
 </html>
