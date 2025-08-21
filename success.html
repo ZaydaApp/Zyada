@@ -15,52 +15,42 @@
     .err{ color:#b91c1c; }
   </style>
   <script>
-    // Your public /exec endpoint
-    const EXEC_BASE = 'https://script.google.com/macros/s/AKfycbwcPYFSb7DU98t_FjqfpQJiFhkqx9mtFaU0xNOYT5WzwfH_kPbV4KP8ennsueFooANuKw/exec';
+    // IMPORTANT: keep this in sync with your current /exec deployment
+    const EXEC_BASE = 'https://script.google.com/macros/s/AKfycbw2kzHLG5c7IXlj_bEYxOQ3ck6gJ3yLwE7tS6pSjOo2EImv2lzdu2V_nfmqTZeo_09zEQ/exec';
 
-    function getParam(name){
-      const m = new URLSearchParams(location.search).get(name);
-      return m ? decodeURIComponent(m) : '';
-    }
+    function qp(name){ const p=new URLSearchParams(location.search); return p.get(name)||''; }
+    function safe(t){ return String(t||'').replace(/[&<>"']/g, s=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[s])); }
 
     function handleFinalize(out){
-      const box = document.getElementById('box');
-      if (!out || !out.ok){
+      const box=document.getElementById('box');
+      if(!out || !out.ok){
         box.innerHTML = `
           <h2 class="title err">We couldn’t finalize your order</h2>
-          <p class="muted">Please take a screenshot and share with support.<br/>Reason: ${out && out.error ? out.error : 'unknown'}</p>
+          <p class="muted">Reason: ${safe(out && out.error || 'unknown')}</p>
           <a class="btn" href="./index.html">Back to offers</a>`;
         return;
       }
       box.innerHTML = `
         <h2 class="title">Payment confirmed 🎉</h2>
         <p class="muted">Show this pickup code at the counter:</p>
-        <div class="code">${out.PickupCode || '———'}</div>
-        <p class="muted">Reservation ID: ${out.ReservationId || '———'}</p>
+        <div class="code">${safe(out.PickupCode)}</div>
+        <p class="muted">Reservation ID: ${safe(out.ReservationId)}</p>
         <a class="btn" href="./index.html">Back to offers</a>`;
     }
 
     function loadFinalize(){
-      const sid = getParam('sid');
+      const sid = qp('sid');
       const box = document.getElementById('box');
-      if (!sid){
-        box.innerHTML = `<h2 class="title err">Missing session</h2>
-                         <p class="muted">No Stripe session ID found.</p>
-                         <a class="btn" href="./index.html">Back to offers</a>`;
+      if(!sid){
+        box.innerHTML = `<h2 class="title err">Missing session</h2><a class="btn" href="./index.html">Back to offers</a>`;
         return;
       }
-      // JSONP to avoid CORS
       const s = document.createElement('script');
       s.src = EXEC_BASE + '?route=finalize_js&sid=' + encodeURIComponent(sid) + '&cb=handleFinalize';
-      s.onerror = () => {
-        box.innerHTML = `<h2 class="title err">Network error</h2>
-                         <p class="muted">Could not finalize. Try refreshing.</p>
-                         <a class="btn" href="./index.html">Back to offers</a>`;
-      };
+      s.onerror = () => { box.innerHTML = `<h2 class="title err">Network error</h2><a class="btn" href="./index.html">Back to offers</a>`; };
       document.body.appendChild(s);
     }
-
-    window.addEventListener('DOMContentLoaded', loadFinalize);
+    addEventListener('DOMContentLoaded', loadFinalize);
   </script>
 </head>
 <body>
